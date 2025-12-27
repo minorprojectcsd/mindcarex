@@ -1,7 +1,8 @@
 import { useRef } from 'react';
-import { Heart, ChevronDown } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import Login from './Login';
 import AnimatedCube from '@/components/background/AnimatedCube';
+import mindcareLogo from '@/assets/mindcare-logo.png';
 
 export default function Landing() {
   const loginRef = useRef<HTMLDivElement>(null);
@@ -17,9 +18,7 @@ export default function Landing() {
         {/* Animated Cube Background */}
         <AnimatedCube />
         {/* Logo */}
-        <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-primary shadow-glow">
-          <Heart className="h-10 w-10 text-primary-foreground" />
-        </div>
+        <img src={mindcareLogo} alt="MindCare Logo" className="mx-auto mb-6 h-32 w-auto" />
         
         {/* Company Name */}
         <h1 className="text-5xl font-bold tracking-tight md:text-7xl">

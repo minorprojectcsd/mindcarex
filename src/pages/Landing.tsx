@@ -1,6 +1,7 @@
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
 import { Heart, ChevronDown } from 'lucide-react';
 import Login from './Login';
+import ParticlesBackground from '@/components/background/ParticlesBackground';
 
 export default function Landing() {
   const loginRef = useRef<HTMLDivElement>(null);
@@ -12,7 +13,9 @@ export default function Landing() {
   return (
     <div className="scroll-smooth">
       {/* Welcome Section - Full Screen */}
-      <section className="relative flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-primary/10 via-background to-secondary/10">
+      <section className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-background">
+        {/* Particles Background */}
+        <ParticlesBackground />
         {/* Logo */}
         <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-primary shadow-glow">
           <Heart className="h-10 w-10 text-primary-foreground" />

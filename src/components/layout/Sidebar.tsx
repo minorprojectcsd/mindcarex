@@ -1,0 +1,109 @@
+import { Link, useLocation } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { cn } from '@/lib/utils';
+import {
+  LayoutDashboard,
+  Calendar,
+  Video,
+  Users,
+  FileText,
+  Settings,
+  LogOut,
+  Heart,
+  Shield,
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+
+const patientNavItems = [
+  { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
+  { icon: Calendar, label: 'My Sessions', href: '/sessions' },
+  { icon: Video, label: 'Join Session', href: '/video' },
+  { icon: Settings, label: 'Privacy Settings', href: '/settings' },
+];
+
+const doctorNavItems = [
+  { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
+  { icon: Users, label: 'Patients', href: '/patients' },
+  { icon: Calendar, label: 'Schedule', href: '/schedule' },
+  { icon: Video, label: 'Start Session', href: '/video' },
+  { icon: FileText, label: 'Reports', href: '/reports' },
+  { icon: Settings, label: 'Settings', href: '/settings' },
+];
+
+export function Sidebar() {
+  const { user, logout } = useAuth();
+  const location = useLocation();
+
+  if (!user) return null;
+
+  const navItems = user.role === 'DOCTOR' ? doctorNavItems : patientNavItems;
+
+  return (
+    <aside className="fixed left-0 top-0 z-40 h-screen w-64 border-r border-sidebar-border bg-sidebar">
+      <div className="flex h-full flex-col">
+        {/* Logo */}
+        <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-6">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
+            <Heart className="h-5 w-5 text-primary-foreground" />
+          </div>
+          <div>
+            <span className="font-semibold text-sidebar-foreground">MindCare</span>
+            <p className="text-xs text-muted-foreground">Mental Health Platform</p>
+          </div>
+        </div>
+
+        {/* Navigation */}
+        <nav className="flex-1 space-y-1 px-3 py-4">
+          {navItems.map((item) => {
+            const isActive = location.pathname === item.href;
+            return (
+              <Link
+                key={item.href}
+                to={item.href}
+                className={cn(
+                  'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200',
+                  isActive
+                    ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+                    : 'text-sidebar-foreground hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground'
+                )}
+              >
+                <item.icon className="h-5 w-5" />
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
+
+        {/* User section */}
+        <div className="border-t border-sidebar-border p-4">
+          <div className="mb-3 flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary-light">
+              <span className="text-sm font-medium text-primary">
+                {user.name.split(' ').map(n => n[0]).join('')}
+              </span>
+            </div>
+            <div className="flex-1 truncate">
+              <p className="truncate text-sm font-medium text-sidebar-foreground">
+                {user.name}
+              </p>
+              <div className="flex items-center gap-1.5">
+                <Shield className="h-3 w-3 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground capitalize">
+                  {user.role.toLowerCase()}
+                </span>
+              </div>
+            </div>
+          </div>
+          <Button
+            variant="ghost"
+            className="w-full justify-start gap-2 text-muted-foreground hover:text-destructive"
+            onClick={logout}
+          >
+            <LogOut className="h-4 w-4" />
+            Sign Out
+          </Button>
+        </div>
+      </div>
+    </aside>
+  );
+}

@@ -9,9 +9,9 @@ import {
   FileText,
   Settings,
   LogOut,
-  Heart,
   Shield,
 } from 'lucide-react';
+import mindcareLogo from '@/assets/mindcare-logo.png';
 import { Button } from '@/components/ui/button';
 
 const patientNavItems = [
@@ -43,9 +43,7 @@ export function Sidebar() {
       <div className="flex h-full flex-col">
         {/* Logo */}
         <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-6">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary">
-            <Heart className="h-5 w-5 text-primary-foreground" />
-          </div>
+          <img src={mindcareLogo} alt="MindCare Logo" className="h-9 w-9 rounded-lg object-contain" />
           <div>
             <span className="font-semibold text-sidebar-foreground">MindCare</span>
             <p className="text-xs text-muted-foreground">Mental Health Platform</p>

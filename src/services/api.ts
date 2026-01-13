@@ -1,6 +1,5 @@
-// Unified API layer - switches between Supabase direct, Spring Boot/Flask, or mock data
+// Unified API layer - switches between Spring Boot/Flask or mock data
 import { API_CONFIG } from '@/config/api';
-import { supabaseScheduleApi, supabaseSessionApi, supabasePatientApi } from './supabaseApi';
 import { springScheduleApi, springSessionApi, springPatientApi, flaskAiApi } from './backendApi';
 import { mockSessions, mockSchedules, mockEmotionMetrics, mockChatMessages, mockPatients } from './mockData';
 import type {
@@ -17,7 +16,7 @@ import type {
   SessionSummaryRequest,
 } from '@/types';
 
-const { USE_MOCK, USE_SUPABASE_DIRECT } = API_CONFIG;
+const { USE_MOCK } = API_CONFIG;
 
 // Simulated API delay for mock mode
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -31,9 +30,7 @@ export const scheduleApi = {
       mockSchedules.push(newSchedule);
       return newSchedule;
     }
-    return USE_SUPABASE_DIRECT 
-      ? supabaseScheduleApi.createSchedule(schedule)
-      : springScheduleApi.createSchedule(schedule);
+    return springScheduleApi.createSchedule(schedule);
   },
 
   async getDoctorSchedules(doctorId: string): Promise<Schedule[]> {
@@ -41,9 +38,7 @@ export const scheduleApi = {
       await delay(400);
       return mockSchedules.filter(s => s.doctor_id === doctorId);
     }
-    return USE_SUPABASE_DIRECT
-      ? supabaseScheduleApi.getDoctorSchedules(doctorId)
-      : springScheduleApi.getDoctorSchedules(doctorId);
+    return springScheduleApi.getDoctorSchedules(doctorId);
   },
 
   async getPatientSchedules(patientId: string): Promise<Schedule[]> {
@@ -51,9 +46,7 @@ export const scheduleApi = {
       await delay(400);
       return mockSchedules.filter(s => s.patient_id === patientId);
     }
-    return USE_SUPABASE_DIRECT
-      ? supabaseScheduleApi.getPatientSchedules(patientId)
-      : springScheduleApi.getPatientSchedules(patientId);
+    return springScheduleApi.getPatientSchedules(patientId);
   },
 
   async updateSchedule(scheduleId: string, updates: Partial<Schedule>): Promise<void> {
@@ -63,9 +56,7 @@ export const scheduleApi = {
       if (idx !== -1) mockSchedules[idx] = { ...mockSchedules[idx], ...updates };
       return;
     }
-    return USE_SUPABASE_DIRECT
-      ? supabaseScheduleApi.updateSchedule(scheduleId, updates)
-      : springScheduleApi.updateSchedule(scheduleId, updates);
+    return springScheduleApi.updateSchedule(scheduleId, updates);
   },
 
   async cancelSchedule(scheduleId: string): Promise<void> {
@@ -87,9 +78,7 @@ export const sessionApi = {
         status: 'in-progress',
       };
     }
-    return USE_SUPABASE_DIRECT
-      ? supabaseSessionApi.startSession(doctorId, patientId)
-      : springSessionApi.startSession(doctorId, patientId);
+    return springSessionApi.startSession(doctorId, patientId);
   },
 
   async endSession(sessionId: string): Promise<Session> {
@@ -104,9 +93,7 @@ export const sessionApi = {
         status: 'completed',
       };
     }
-    return USE_SUPABASE_DIRECT
-      ? supabaseSessionApi.endSession(sessionId)
-      : springSessionApi.endSession(sessionId);
+    return springSessionApi.endSession(sessionId);
   },
 
   async getSession(sessionId: string): Promise<Session | null> {
@@ -114,9 +101,7 @@ export const sessionApi = {
       await delay(300);
       return mockSessions.find(s => s.id === sessionId) || null;
     }
-    return USE_SUPABASE_DIRECT
-      ? supabaseSessionApi.getSession(sessionId)
-      : springSessionApi.getSession(sessionId);
+    return springSessionApi.getSession(sessionId);
   },
 
   async getSessionHistory(userId: string): Promise<Session[]> {
@@ -124,9 +109,7 @@ export const sessionApi = {
       await delay(400);
       return mockSessions.filter(s => s.patient_id === userId || s.doctor_id === userId);
     }
-    return USE_SUPABASE_DIRECT
-      ? supabaseSessionApi.getSessionHistory(userId)
-      : springSessionApi.getSessionHistory(userId);
+    return springSessionApi.getSessionHistory(userId);
   },
 
   async getSessions(userId: string, role: 'PATIENT' | 'DOCTOR'): Promise<Session[]> {
@@ -138,24 +121,8 @@ export const sessionApi = {
       await delay(400);
       return sessionId === 'session-1' ? mockEmotionMetrics : null;
     }
-    // For real data, fetch from Supabase emotion summary
-    const summary = await supabaseSessionApi.getEmotionSummary(sessionId);
-    if (!summary) return null;
-    
-    return {
-      sessionId,
-      averages: {
-        happy: summary.avg_happy || 0,
-        sad: summary.avg_sad || 0,
-        neutral: summary.avg_neutral || 0,
-        angry: summary.avg_angry || 0,
-        fearful: summary.avg_fearful || 0,
-        surprised: summary.avg_surprised || 0,
-        disgusted: summary.avg_disgusted || 0,
-      },
-      timeline: [],
-      riskIndicators: [],
-    };
+    // For real data, this would fetch from your backend
+    return null;
   },
 
   async getChatTranscript(sessionId: string): Promise<ChatMessage[]> {
@@ -163,8 +130,8 @@ export const sessionApi = {
       await delay(300);
       return mockChatMessages.filter(m => m.sessionId === sessionId);
     }
-    const messages = await supabaseSessionApi.getMessages(sessionId);
-    return messages.map(m => ({
+    const messages = await springSessionApi.getMessages(sessionId);
+    return messages.map((m: any) => ({
       id: m.id,
       sessionId: m.session_id,
       senderId: m.sender_id,
@@ -180,7 +147,7 @@ export const sessionApi = {
       await delay(200);
       return { id: `msg-${Date.now()}`, session_id: sessionId, sender_id: senderId, content, created_at: new Date().toISOString() };
     }
-    return supabaseSessionApi.sendMessage(sessionId, senderId, content, senderRole);
+    return springSessionApi.sendMessage(sessionId, content);
   },
 };
 
@@ -191,9 +158,7 @@ export const patientApi = {
       await delay(400);
       return mockPatients.filter(p => p.primaryDoctorId === doctorId);
     }
-    return USE_SUPABASE_DIRECT
-      ? supabasePatientApi.getPatients(doctorId)
-      : springPatientApi.getPatients(doctorId);
+    return springPatientApi.getPatients(doctorId);
   },
 
   async getPatient(patientId: string): Promise<Patient | null> {
@@ -201,9 +166,7 @@ export const patientApi = {
       await delay(300);
       return mockPatients.find(p => p.id === patientId) || null;
     }
-    return USE_SUPABASE_DIRECT
-      ? supabasePatientApi.getPatient(patientId)
-      : springPatientApi.getPatient(patientId);
+    return springPatientApi.getPatient(patientId);
   },
 
   async getPatientSessions(patientId: string): Promise<Session[]> {
@@ -256,7 +219,7 @@ export const aiApi = {
   },
 };
 
-// ============= Consent API (local storage for now) =============
+// ============= Consent API (local storage) =============
 export const consentApi = {
   async getConsent(userId: string): Promise<ConsentSettings> {
     await delay(200);
@@ -297,6 +260,5 @@ export const exportChatTranscript = (messages: ChatMessage[], format: 'txt' | 'p
   URL.revokeObjectURL(url);
 };
 
-// Re-export for backward compatibility
-export { supabaseScheduleApi, supabaseSessionApi, supabasePatientApi } from './supabaseApi';
+// Re-export backend APIs
 export { springScheduleApi, springSessionApi, springPatientApi, flaskAiApi } from './backendApi';

@@ -13,15 +13,12 @@ export const API_CONFIG = {
   
   // Toggle between mock data and real backends
   // In production: set VITE_USE_MOCK=false in environment
-  USE_MOCK: import.meta.env.VITE_USE_MOCK === 'true',
-  
-  // Use Supabase directly for data operations (recommended for production)
-  USE_SUPABASE_DIRECT: import.meta.env.VITE_USE_SUPABASE_DIRECT !== 'false',
+  USE_MOCK: import.meta.env.VITE_USE_MOCK !== 'false',
 };
 
 // Helper to get auth token for API calls
 export const getAuthToken = (): string | null => {
-  return localStorage.getItem('supabase_token');
+  return localStorage.getItem('mindcarex_auth_token');
 };
 
 // Common headers for Spring Boot API calls

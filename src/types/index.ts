@@ -1,6 +1,6 @@
 export type UserRole = 'PATIENT' | 'DOCTOR';
 
-// ============= Database Schema Types (Supabase) =============
+// ============= Database Schema Types =============
 
 export interface User {
   id: string;

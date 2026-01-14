@@ -1,15 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Camera, Mic, Brain, MessageSquare, Shield } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
-import { useAuth } from '@/contexts/AuthContext';
-import { consentApi } from '@/services/api';
 import { ConsentSettings } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 
 export function ConsentForm() {
-  const { user } = useAuth();
   const { toast } = useToast();
   const [settings, setSettings] = useState<ConsentSettings>({
     cameraEnabled: true,
@@ -17,28 +14,25 @@ export function ConsentForm() {
     chatAnalysisEnabled: true,
     emotionTrackingEnabled: true,
   });
-  const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-
-  useEffect(() => {
-    if (user) {
-      consentApi.getConsent(user.id).then((data) => {
-        setSettings(data);
-        setIsLoading(false);
-      });
-    }
-  }, [user]);
 
   const handleToggle = (key: keyof ConsentSettings) => {
     setSettings((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
   const handleSave = async () => {
-    if (!user) return;
-    
     setIsSaving(true);
     try {
-      await consentApi.updateConsent(user.id, settings);
+      // TODO: Replace with Spring Boot API call
+      // await fetch('/api/consent', {
+      //   method: 'PUT',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify(settings),
+      // });
+      
+      // Store locally for now
+      localStorage.setItem('consent_settings', JSON.stringify(settings));
+      
       toast({
         title: 'Settings saved',
         description: 'Your privacy preferences have been updated.',
@@ -53,16 +47,6 @@ export function ConsentForm() {
       setIsSaving(false);
     }
   };
-
-  if (isLoading) {
-    return (
-      <Card>
-        <CardContent className="flex h-64 items-center justify-center">
-          <p className="text-muted-foreground">Loading settings...</p>
-        </CardContent>
-      </Card>
-    );
-  }
 
   const consentItems = [
     {

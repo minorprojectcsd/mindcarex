@@ -7,25 +7,13 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSocket } from '@/hooks/useSocket';
-import { ChatMessage, Message } from '@/types';
-import { exportChatTranscript } from '@/services/api';
+import { Message } from '@/types';
 import { cn } from '@/lib/utils';
 
 interface ChatPanelProps {
   sessionId: string;
   onClose: () => void;
 }
-
-// Convert Message to ChatMessage for export
-const toChatMessage = (msg: Message): ChatMessage => ({
-  id: msg.id,
-  sessionId: msg.session_id,
-  senderId: msg.sender_id,
-  senderRole: msg.senderRole || 'PATIENT',
-  content: msg.content,
-  timestamp: msg.created_at,
-  isRead: msg.isRead || false,
-});
 
 export function ChatPanel({ sessionId, onClose }: ChatPanelProps) {
   const { user } = useAuth();
@@ -75,7 +63,17 @@ export function ChatPanel({ sessionId, onClose }: ChatPanelProps) {
   };
 
   const handleExport = () => {
-    exportChatTranscript(messages.map(toChatMessage), 'txt');
+    const content = messages
+      .map((m) => `[${format(new Date(m.created_at), 'yyyy-MM-dd HH:mm:ss')}] ${m.senderRole}: ${m.content}`)
+      .join('\n');
+    
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `chat-transcript-${sessionId}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   return (

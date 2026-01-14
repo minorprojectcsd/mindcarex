@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, ReactNode } from 'react';
 import { UserRole } from '@/types';
-import { mockPatients, mockDoctors } from '@/services/mockData';
 
 interface AuthUser {
   id: string;
@@ -17,6 +16,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, name: string, role: UserRole) => Promise<void>;
   logout: () => Promise<void>;
+  setUser: (user: AuthUser | null) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -52,48 +52,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(AUTH_USER_KEY);
   };
 
+  // Placeholder login - replace with your Spring Boot API call
   const login = useCallback(async (email: string, password: string) => {
     setIsLoading(true);
     
     try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // TODO: Replace with Spring Boot API call
+      // const response = await fetch('/api/auth/login', {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify({ email, password }),
+      // });
+      // const data = await response.json();
+      // saveUser(data.user);
       
-      // Check mock data for existing users
-      const doctor = mockDoctors.find(d => d.email === email);
-      const patient = mockPatients.find(p => p.email === email);
-      const foundUser = doctor || patient;
-      
-      if (foundUser) {
-        saveUser({
-          id: foundUser.id,
-          email: foundUser.email || email,
-          name: foundUser.name,
-          role: foundUser.role,
-          created_at: foundUser.created_at,
-        });
-      } else {
-        // Accept any email/password for demo
-        saveUser({
-          id: `user-${Date.now()}`,
-          email,
-          name: email.split('@')[0],
-          role: 'PATIENT',
-          created_at: new Date().toISOString(),
-        });
-      }
+      // Temporary: Create user from email for demo purposes
+      saveUser({
+        id: `user-${Date.now()}`,
+        email,
+        name: email.split('@')[0],
+        role: 'PATIENT',
+        created_at: new Date().toISOString(),
+      });
     } finally {
       setIsLoading(false);
     }
   }, []);
 
+  // Placeholder register - replace with your Spring Boot API call
   const register = useCallback(async (email: string, password: string, name: string, role: UserRole) => {
     setIsLoading(true);
     
     try {
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // TODO: Replace with Spring Boot API call
+      // const response = await fetch('/api/auth/register', {
+      //   method: 'POST',
+      //   headers: { 'Content-Type': 'application/json' },
+      //   body: JSON.stringify({ email, password, name, role }),
+      // });
+      // const data = await response.json();
+      // saveUser(data.user);
       
+      // Temporary: Create user for demo purposes
       saveUser({
         id: `user-${Date.now()}`,
         email,
@@ -107,7 +107,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
+    // TODO: Call Spring Boot logout endpoint if needed
     clearUser();
+  }, []);
+
+  const handleSetUser = useCallback((newUser: AuthUser | null) => {
+    if (newUser) {
+      saveUser(newUser);
+    } else {
+      clearUser();
+    }
   }, []);
 
   return (
@@ -119,6 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         login,
         register,
         logout,
+        setUser: handleSetUser,
       }}
     >
       {children}

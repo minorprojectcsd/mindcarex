@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, AlertCircle } from 'lucide-react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
@@ -6,60 +6,30 @@ import { VideoRoom } from '@/components/video/VideoRoom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
-import { useAuth } from '@/contexts/AuthContext';
-import { consentApi } from '@/services/api';
 import { ConsentSettings } from '@/types';
 
 export default function VideoSession() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
   
-  const [consent, setConsent] = useState<ConsentSettings | null>(null);
+  const [consent, setConsent] = useState<ConsentSettings>({
+    cameraEnabled: true,
+    micEnabled: true,
+    emotionTrackingEnabled: true,
+    chatAnalysisEnabled: true,
+  });
   const [hasConfirmedConsent, setHasConfirmedConsent] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const loadConsent = async () => {
-      if (!user) return;
-      
-      try {
-        const settings = await consentApi.getConsent(user.id);
-        setConsent(settings);
-      } catch (error) {
-        console.error('Failed to load consent settings:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadConsent();
-  }, [user]);
 
   const handleConsentChange = (key: keyof ConsentSettings) => {
-    if (!consent) return;
     setConsent({ ...consent, [key]: !consent[key] });
   };
 
-  const handleConfirm = async () => {
-    if (!user || !consent) return;
-    
-    await consentApi.updateConsent(user.id, consent);
+  const handleConfirm = () => {
     setHasConfirmedConsent(true);
   };
 
-  if (isLoading) {
-    return (
-      <DashboardLayout>
-        <div className="flex h-64 items-center justify-center">
-          <p className="text-muted-foreground">Loading session...</p>
-        </div>
-      </DashboardLayout>
-    );
-  }
-
   // Show consent confirmation before joining
-  if (!hasConfirmedConsent && consent) {
+  if (!hasConfirmedConsent) {
     return (
       <DashboardLayout>
         <div className="mx-auto max-w-xl animate-slide-up">
@@ -173,7 +143,7 @@ export default function VideoSession() {
       <div className="h-[calc(100vh-5rem)] md:h-[calc(100vh-8rem)]">
         <VideoRoom
           sessionId={sessionId || 'demo-session'}
-          consent={consent!}
+          consent={consent}
         />
       </div>
     </DashboardLayout>

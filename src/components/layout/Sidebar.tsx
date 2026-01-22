@@ -22,18 +22,16 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import mindcareLogo from '@/assets/mindcare-logo.png';
 
 const patientNavItems = [
-  { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
-  { icon: Calendar, label: 'My Sessions', href: '/sessions' },
-  { icon: Video, label: 'Join Session', href: '/video' },
-  { icon: Settings, label: 'Privacy Settings', href: '/settings' },
+  { icon: LayoutDashboard, label: 'Dashboard', href: '/patient/dashboard' },
+  { icon: Calendar, label: 'My Appointments', href: '/patient/appointments' },
+  { icon: Video, label: 'Book Appointment', href: '/patient/book-appointment' },
+  { icon: Settings, label: 'Settings', href: '/settings' },
 ];
 
 const doctorNavItems = [
-  { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
-  { icon: Users, label: 'Patients', href: '/patients' },
-  { icon: Calendar, label: 'Schedule', href: '/schedule' },
+  { icon: LayoutDashboard, label: 'Dashboard', href: '/doctor/dashboard' },
+  { icon: Users, label: 'Appointments', href: '/doctor/appointments' },
   { icon: Video, label: 'Start Session', href: '/video' },
-  { icon: FileText, label: 'Reports', href: '/reports' },
   { icon: Settings, label: 'Settings', href: '/settings' },
 ];
 

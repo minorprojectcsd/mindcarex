@@ -26,13 +26,16 @@ export default function Register() {
       await register(email, password, name, role);
       toast({
         title: 'Account created',
-        description: 'Welcome to mindcarex!',
+        description: 'Please login with your credentials.',
       });
-      navigate('/dashboard');
-    } catch (error) {
+      navigate('/login');
+    } catch (error: any) {
+      const message = error?.response?.data?.message || 
+                      error?.message || 
+                      'Registration failed. Please try again.';
       toast({
         title: 'Registration failed',
-        description: error instanceof Error ? error.message : 'Please try again',
+        description: message,
         variant: 'destructive',
       });
     }

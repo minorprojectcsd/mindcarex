@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, ArrowRight } from 'lucide-react';
+import { Mail, Lock, ArrowRight, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,11 +21,30 @@ export default function Login() {
     
     try {
       await login(email, password);
-      navigate('/dashboard');
-    } catch (error) {
+      
+      // Get role from localStorage after login
+      const role = localStorage.getItem('role');
+      
+      // Redirect based on role
+      switch (role) {
+        case 'ADMIN':
+          navigate('/admin/dashboard');
+          break;
+        case 'DOCTOR':
+          navigate('/doctor/dashboard');
+          break;
+        case 'PATIENT':
+        default:
+          navigate('/patient/dashboard');
+          break;
+      }
+    } catch (error: any) {
+      const message = error?.response?.data?.message || 
+                      error?.message || 
+                      'Invalid credentials. Please try again.';
       toast({
         title: 'Login failed',
-        description: error instanceof Error ? error.message : 'Invalid credentials',
+        description: message,
         variant: 'destructive',
       });
     }
@@ -88,8 +107,17 @@ export default function Login() {
               </div>
 
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading ? 'Signing in...' : 'Sign In'}
-                <ArrowRight className="ml-2 h-4 w-4" />
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Signing in...
+                  </>
+                ) : (
+                  <>
+                    Sign In
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </>
+                )}
               </Button>
             </form>
 

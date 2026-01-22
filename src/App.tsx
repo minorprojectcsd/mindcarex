@@ -5,27 +5,36 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
-// Pages
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+
+// Public Pages
 import Index from "./pages/Index";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import PatientDashboard from "./pages/PatientDashboard";
-import DoctorDashboard from "./pages/DoctorDashboard";
-import VideoSession from "./pages/VideoSession";
-import Sessions from "./pages/Sessions";
-import Patients from "./pages/Patients";
-import Schedule from "./pages/Schedule";
-import Reports from "./pages/Reports";
-import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+
+// Patient Pages
+import PatientDashboard from "./pages/patient/PatientDashboard";
+import BookAppointment from "./pages/patient/BookAppointment";
+import MyAppointments from "./pages/patient/MyAppointments";
+
+// Doctor Pages
+import DoctorDashboard from "./pages/doctor/DoctorDashboard";
+import DoctorAppointments from "./pages/doctor/DoctorAppointments";
+
+// Admin Pages
+import AdminDashboard from "./pages/admin/AdminDashboard";
+
+// Shared Pages
+import VideoSession from "./pages/VideoSession";
+import Settings from "./pages/Settings";
 
 const queryClient = new QueryClient();
 
-// Dashboard router based on role
-function Dashboard() {
-  const { user, isLoading, isAuthenticated } = useAuth();
-  
-  // Wait for auth to initialize
+// Redirect based on role after login
+function RoleBasedRedirect() {
+  const { user, isAuthenticated, isLoading } = useAuth();
+
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -33,12 +42,20 @@ function Dashboard() {
       </div>
     );
   }
-  
+
   if (!isAuthenticated || !user) {
     return <Navigate to="/login" replace />;
   }
-  
-  return user.role === 'DOCTOR' ? <DoctorDashboard /> : <PatientDashboard />;
+
+  switch (user.role) {
+    case 'ADMIN':
+      return <Navigate to="/admin/dashboard" replace />;
+    case 'DOCTOR':
+      return <Navigate to="/doctor/dashboard" replace />;
+    case 'PATIENT':
+    default:
+      return <Navigate to="/patient/dashboard" replace />;
+  }
 }
 
 const App = () => (
@@ -50,17 +67,87 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <Routes>
+              {/* Public Routes */}
               <Route path="/" element={<Index />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/sessions" element={<Sessions />} />
-              <Route path="/video" element={<VideoSession />} />
-              <Route path="/video/:sessionId" element={<VideoSession />} />
-              <Route path="/patients" element={<Patients />} />
-              <Route path="/schedule" element={<Schedule />} />
-              <Route path="/reports" element={<Reports />} />
-              <Route path="/settings" element={<Settings />} />
+
+              {/* Legacy redirect for /dashboard */}
+              <Route path="/dashboard" element={<RoleBasedRedirect />} />
+
+              {/* Patient Routes */}
+              <Route 
+                path="/patient/dashboard" 
+                element={
+                  <ProtectedRoute allowedRoles={['PATIENT']}>
+                    <PatientDashboard />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/patient/book-appointment" 
+                element={
+                  <ProtectedRoute allowedRoles={['PATIENT']}>
+                    <BookAppointment />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/patient/appointments" 
+                element={
+                  <ProtectedRoute allowedRoles={['PATIENT']}>
+                    <MyAppointments />
+                  </ProtectedRoute>
+                } 
+              />
+
+              {/* Doctor Routes */}
+              <Route 
+                path="/doctor/dashboard" 
+                element={
+                  <ProtectedRoute allowedRoles={['DOCTOR']}>
+                    <DoctorDashboard />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/doctor/appointments" 
+                element={
+                  <ProtectedRoute allowedRoles={['DOCTOR']}>
+                    <DoctorAppointments />
+                  </ProtectedRoute>
+                } 
+              />
+
+              {/* Admin Routes */}
+              <Route 
+                path="/admin/dashboard" 
+                element={
+                  <ProtectedRoute allowedRoles={['ADMIN']}>
+                    <AdminDashboard />
+                  </ProtectedRoute>
+                } 
+              />
+
+              {/* Shared Protected Routes */}
+              <Route 
+                path="/video/:sessionId" 
+                element={
+                  <ProtectedRoute>
+                    <VideoSession />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/settings" 
+                element={
+                  <ProtectedRoute>
+                    <Settings />
+                  </ProtectedRoute>
+                } 
+              />
+
+              {/* 404 */}
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

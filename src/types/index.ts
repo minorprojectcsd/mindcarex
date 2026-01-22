@@ -1,4 +1,4 @@
-export type UserRole = 'PATIENT' | 'DOCTOR';
+export type UserRole = 'PATIENT' | 'DOCTOR' | 'ADMIN';
 
 // ============= Database Schema Types =============
 

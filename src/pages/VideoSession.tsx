@@ -1,16 +1,23 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, AlertCircle } from 'lucide-react';
+import { ArrowLeft, AlertCircle, Loader2 } from 'lucide-react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { VideoRoom } from '@/components/video/VideoRoom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
-import { ConsentSettings } from '@/types';
+import { ConsentSettings, Session } from '@/types';
+import { sessionService } from '@/services/sessionService';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function VideoSession() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  
+  const [session, setSession] = useState<Session | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
   const [consent, setConsent] = useState<ConsentSettings>({
     cameraEnabled: true,
@@ -20,13 +27,128 @@ export default function VideoSession() {
   });
   const [hasConfirmedConsent, setHasConfirmedConsent] = useState(false);
 
+  // Load session details
+  useEffect(() => {
+    const loadSession = async () => {
+      if (!sessionId) {
+        setError('No session ID provided');
+        setIsLoading(false);
+        return;
+      }
+
+      // For demo/dev mode - allow "demo-session" without API call
+      if (sessionId === 'demo-session' || sessionId.startsWith('demo')) {
+        setSession({
+          id: sessionId,
+          doctor_id: 'demo-doctor',
+          patient_id: 'demo-patient',
+          start_time: new Date().toISOString(),
+          end_time: null,
+          status: 'in-progress',
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const sessionData = await sessionService.getSession(sessionId);
+        setSession(sessionData);
+      } catch (err: any) {
+        console.error('Failed to load session:', err);
+        // For development - create a mock session if API not available
+        if (err.code === 'ERR_NETWORK' || err.response?.status === 404) {
+          setSession({
+            id: sessionId,
+            doctor_id: user?.id || 'unknown',
+            patient_id: user?.id || 'unknown',
+            start_time: new Date().toISOString(),
+            end_time: null,
+            status: 'in-progress',
+          });
+        } else {
+          setError(err.message || 'Failed to load session');
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadSession();
+  }, [sessionId, user?.id]);
+
   const handleConsentChange = (key: keyof ConsentSettings) => {
     setConsent({ ...consent, [key]: !consent[key] });
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
+    // Optionally start the session via API
+    if (session && sessionId && !sessionId.startsWith('demo')) {
+      try {
+        await sessionService.startSession(sessionId);
+      } catch (err) {
+        console.warn('Could not start session via API:', err);
+      }
+    }
     setHasConfirmedConsent(true);
   };
+
+  const handleEndSession = async () => {
+    if (session && sessionId && !sessionId.startsWith('demo')) {
+      try {
+        await sessionService.endSession(sessionId);
+      } catch (err) {
+        console.warn('Could not end session via API:', err);
+      }
+    }
+  };
+
+  const getBackUrl = () => {
+    if (user?.role === 'DOCTOR') return '/doctor/dashboard';
+    if (user?.role === 'PATIENT') return '/patient/dashboard';
+    return '/dashboard';
+  };
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <DashboardLayout>
+        <div className="flex min-h-[60vh] items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
+            <p className="mt-4 text-muted-foreground">Loading session...</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <DashboardLayout>
+        <div className="mx-auto max-w-xl animate-slide-up">
+          <Button
+            variant="ghost"
+            className="mb-6"
+            onClick={() => navigate(getBackUrl())}
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Dashboard
+          </Button>
+          <Card>
+            <CardContent className="py-12 text-center">
+              <AlertCircle className="mx-auto h-12 w-12 text-destructive" />
+              <h2 className="mt-4 text-xl font-semibold">Session Not Found</h2>
+              <p className="mt-2 text-muted-foreground">{error}</p>
+              <Button className="mt-6" onClick={() => navigate(getBackUrl())}>
+                Return to Dashboard
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   // Show consent confirmation before joining
   if (!hasConfirmedConsent) {
@@ -36,7 +158,7 @@ export default function VideoSession() {
           <Button
             variant="ghost"
             className="mb-6"
-            onClick={() => navigate('/dashboard')}
+            onClick={() => navigate(getBackUrl())}
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Dashboard
@@ -123,7 +245,7 @@ export default function VideoSession() {
                 <Button
                   variant="outline"
                   className="flex-1"
-                  onClick={() => navigate('/dashboard')}
+                  onClick={() => navigate(getBackUrl())}
                 >
                   Cancel
                 </Button>
@@ -144,6 +266,7 @@ export default function VideoSession() {
         <VideoRoom
           sessionId={sessionId || 'demo-session'}
           consent={consent}
+          onEnd={handleEndSession}
         />
       </div>
     </DashboardLayout>

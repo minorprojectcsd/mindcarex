@@ -90,7 +90,15 @@ export function VideoRoom({ sessionId, consent, onEnd }: VideoRoomProps) {
   const handleEndCall = () => {
     endCall();
     onEnd?.();
-    navigate('/dashboard');
+    // Navigate based on user role
+    const role = localStorage.getItem('role');
+    if (role === 'DOCTOR') {
+      navigate('/doctor/dashboard');
+    } else if (role === 'PATIENT') {
+      navigate('/patient/dashboard');
+    } else {
+      navigate('/dashboard');
+    }
   };
 
   const toggleFullscreen = () => {

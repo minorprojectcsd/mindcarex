@@ -126,24 +126,39 @@ export default function VideoSession() {
           setMessages((prev) => [...prev, JSON.parse(msg.body)]);
         });
 
+        // Capture our own WebSocket session ID from the CONNECTED frame
+        // The backend adds wsSessionId to each signal via SimpMessageHeaderAccessor
+        let myWsSessionId: string | null = null;
+
         client.subscribe(`/topic/signal/${sessionId}`, (msg) => {
           const signal = JSON.parse(msg.body);
           
-          // DEBUG: Log all signal details for troubleshooting
           console.log('[WebRTC] 📨 Raw signal received:', {
             type: signal.type,
             signalFrom: signal.from,
             myUserId: userId,
-            wsSessionId: signal.wsSessionId,
-            match: signal.from === userId,
+            signalWsSessionId: signal.wsSessionId,
+            myWsSessionId: myWsSessionId,
           });
           
-          // CRITICAL: Only filter by userId - ignore signals we sent
-          if (signal.from !== userId) {
+          // Learn our wsSessionId from the first echo of our own signal
+          if (signal.from === userId && !myWsSessionId && signal.wsSessionId) {
+            myWsSessionId = signal.wsSessionId;
+            wsSessionIdRef.current = signal.wsSessionId;
+            console.log('[WebRTC] 🔑 Learned my wsSessionId:', myWsSessionId);
+          }
+          
+          // CRITICAL: Filter by wsSessionId (not userId) so it works 
+          // even if both users share the same account during testing
+          const isOwnSignal = myWsSessionId 
+            ? signal.wsSessionId === myWsSessionId 
+            : signal.from === userId;
+          
+          if (!isOwnSignal) {
             console.log('[WebRTC] 📥 Processing signal type:', signal.type, 'from:', signal.from);
             handleSignal(signal);
           } else {
-            console.log('[WebRTC] 🚫 Ignoring own signal:', signal.type);
+            console.log('[WebRTC] 🚫 Ignoring own signal:', signal.type, 'wsSession:', signal.wsSessionId);
           }
         });
 

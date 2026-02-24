@@ -94,29 +94,18 @@ export default function MyAppointments() {
           >
             {isLive ? '🟢 Live' : appointment.status}
           </Badge>
-          {isLive && (
-            <Button size="sm" onClick={() => {
-              if (appointment.sessionId) {
-                navigate(`/video/${appointment.sessionId}`);
-              } else {
-                joinSessionMutation.mutate(appointment.id);
-              }
-            }}>
+          {isLive && appointment.sessionId && (
+            <Button size="sm" onClick={() => navigate(`/video/${appointment.sessionId}`)}>
               <Video className="mr-1 h-3 w-3" />
               Join Now
             </Button>
           )}
+          {isLive && !appointment.sessionId && (
+            <span className="text-xs text-muted-foreground">Session starting…</span>
+          )}
           {isBooked && (
             <>
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={joinSessionMutation.isPending}
-                onClick={() => joinSessionMutation.mutate(appointment.id)}
-              >
-                <Video className="mr-1 h-3 w-3" />
-                Join
-              </Button>
+              <span className="text-xs text-muted-foreground">Waiting for doctor to start</span>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive">

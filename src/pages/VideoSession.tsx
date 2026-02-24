@@ -128,12 +128,19 @@ export default function VideoSession() {
 
         client.subscribe(`/topic/signal/${sessionId}`, (msg) => {
           const signal = JSON.parse(msg.body);
-          // CRITICAL: Filter out our own messages using userId AND wsSessionId
-          const isOwnSignal = signal.from === userId || 
-            (wsSessionIdRef.current && signal.wsSessionId === wsSessionIdRef.current);
           
-          if (!isOwnSignal) {
-            console.log('[WebRTC] 📥 Got signal type:', signal.type, 'from:', signal.from);
+          // DEBUG: Log all signal details for troubleshooting
+          console.log('[WebRTC] 📨 Raw signal received:', {
+            type: signal.type,
+            signalFrom: signal.from,
+            myUserId: userId,
+            wsSessionId: signal.wsSessionId,
+            match: signal.from === userId,
+          });
+          
+          // CRITICAL: Only filter by userId - ignore signals we sent
+          if (signal.from !== userId) {
+            console.log('[WebRTC] 📥 Processing signal type:', signal.type, 'from:', signal.from);
             handleSignal(signal);
           } else {
             console.log('[WebRTC] 🚫 Ignoring own signal:', signal.type);

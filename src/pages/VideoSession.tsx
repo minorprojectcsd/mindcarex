@@ -22,6 +22,7 @@ export default function VideoSession() {
   const localStreamRef = useRef<MediaStream | null>(null);
   const stompClientRef = useRef<Client | null>(null);
   const pendingCandidatesRef = useRef<RTCIceCandidateInit[]>([]);
+  const wsSessionIdRef = useRef<string | null>(null);
 
   const [messages, setMessages] = useState<any[]>([]);
   const [messageText, setMessageText] = useState('');
@@ -113,6 +114,12 @@ export default function VideoSession() {
 
       onConnect: () => {
         console.log('[STOMP] ✅ Connected');
+
+        // Try to capture our WebSocket session ID for filtering
+        try {
+          wsSessionIdRef.current = (client as any)?._webSocket?.url || null;
+        } catch { /* ignore */ }
+
         setIsConnected(true);
 
         client.subscribe(`/topic/chat/${sessionId}`, (msg) => {
@@ -121,8 +128,11 @@ export default function VideoSession() {
 
         client.subscribe(`/topic/signal/${sessionId}`, (msg) => {
           const signal = JSON.parse(msg.body);
-          // CRITICAL: Filter out our own messages
-          if (signal.from !== userId) {
+          // CRITICAL: Filter out our own messages using userId AND wsSessionId
+          const isOwnSignal = signal.from === userId || 
+            (wsSessionIdRef.current && signal.wsSessionId === wsSessionIdRef.current);
+          
+          if (!isOwnSignal) {
             console.log('[WebRTC] 📥 Got signal type:', signal.type, 'from:', signal.from);
             handleSignal(signal);
           } else {
@@ -130,7 +140,11 @@ export default function VideoSession() {
           }
         });
 
-        if (userRole === 'DOCTOR') setTimeout(createOffer, 1000);
+        if (userRole === 'DOCTOR') {
+          setTimeout(createOffer, 1000);
+        } else {
+          console.log('[WebRTC] 👤 Patient waiting for offer...');
+        }
       },
 
       onDisconnect: () => {

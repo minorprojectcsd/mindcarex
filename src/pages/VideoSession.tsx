@@ -126,6 +126,10 @@ export default function VideoSession() {
 
       onConnect: () => {
         console.log('[STOMP] ✅ Connected');
+        console.log("USER ID:", userId);
+        console.log("ROLE:", userRole);
+        console.log("SESSION:", sessionId);
+
         setIsConnected(true);
 
         client.subscribe(`/topic/chat/${sessionId}`, (msg) => {

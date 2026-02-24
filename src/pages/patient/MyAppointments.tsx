@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { appointmentService, PatientAppointment } from '@/services/appointmentService';
+import { sessionService } from '@/services/sessionService';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -26,6 +27,20 @@ export default function MyAppointments() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  const joinSessionMutation = useMutation({
+    mutationFn: (appointmentId: string) => sessionService.joinSession(appointmentId),
+    onSuccess: (data) => {
+      navigate(`/video/${data.sessionId}`);
+    },
+    onError: (error: any) => {
+      toast({
+        title: 'Cannot join session',
+        description: error?.response?.data?.message || 'Session may not be started yet. Please wait for the doctor.',
+        variant: 'destructive',
+      });
+    },
+  });
 
   const { data: appointments, isLoading } = useQuery({
     queryKey: ['my-appointments'],
@@ -80,14 +95,25 @@ export default function MyAppointments() {
             {isLive ? '🟢 Live' : appointment.status}
           </Badge>
           {isLive && (
-            <Button size="sm" onClick={() => navigate(`/video/${appointment.sessionId || appointment.id}`)}>
+            <Button size="sm" onClick={() => {
+              if (appointment.sessionId) {
+                navigate(`/video/${appointment.sessionId}`);
+              } else {
+                joinSessionMutation.mutate(appointment.id);
+              }
+            }}>
               <Video className="mr-1 h-3 w-3" />
               Join Now
             </Button>
           )}
           {isBooked && (
             <>
-              <Button size="sm" variant="outline" onClick={() => navigate(`/video/${appointment.id}`)}>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={joinSessionMutation.isPending}
+                onClick={() => joinSessionMutation.mutate(appointment.id)}
+              >
                 <Video className="mr-1 h-3 w-3" />
                 Join
               </Button>

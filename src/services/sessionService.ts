@@ -33,6 +33,18 @@ export const sessionService = {
     return response.data;
   },
 
+  async joinSession(appointmentId: string): Promise<StartSessionResponse> {
+    // Try to get existing session for this appointment; if none exists, start one
+    try {
+      const response = await api.get<StartSessionResponse>(`/api/sessions/appointment/${appointmentId}`);
+      return response.data;
+    } catch {
+      // Fallback: if no dedicated join endpoint, use start (backend should be idempotent)
+      const response = await api.post<StartSessionResponse>(`/api/sessions/${appointmentId}/start`);
+      return response.data;
+    }
+  },
+
   async getSession(sessionId: string): Promise<SessionDetails> {
     const response = await api.get<SessionDetails>(`/api/sessions/${sessionId}`);
     return response.data;

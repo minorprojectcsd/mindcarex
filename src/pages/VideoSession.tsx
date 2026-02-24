@@ -23,7 +23,6 @@ export default function VideoSession() {
   const stompClientRef = useRef<Client | null>(null);
   const pendingCandidatesRef = useRef<RTCIceCandidateInit[]>([]);
   // Unique nonce per browser tab – used to filter out own signals
-  const myNonceRef = useRef<string>(crypto.randomUUID());
 
   const [messages, setMessages] = useState<any[]>([]);
   const [messageText, setMessageText] = useState('');
@@ -87,7 +86,11 @@ export default function VideoSession() {
 
       pc.onicecandidate = (event) => {
         if (event.candidate) {
-          sendSignal({ type: 'ice', candidate: event.candidate.toJSON(), from: userId, nonce: myNonceRef.current });
+          sendSignal({
+            type: 'ice',
+            candidate: event.candidate.toJSON(),
+            from: userId
+          });
         }
       };
 
@@ -114,7 +117,7 @@ export default function VideoSession() {
       debug: (str) => console.log('[STOMP]', str),
 
       onConnect: () => {
-        console.log('[STOMP] ✅ Connected – my nonce:', myNonceRef.current);
+        console.log('[STOMP] ✅ Connected');
         setIsConnected(true);
 
         client.subscribe(`/topic/chat/${sessionId}`, (msg) => {
@@ -122,24 +125,23 @@ export default function VideoSession() {
         });
 
         client.subscribe(`/topic/signal/${sessionId}`, (msg) => {
-          const signal = JSON.parse(msg.body);
-          
-          console.log('[WebRTC] 📨 Signal:', {
-            type: signal.type,
-            from: signal.from,
-            nonce: signal.nonce,
-            myNonce: myNonceRef.current,
-          });
-          
-          // CRITICAL: Filter by nonce (unique per tab) – works even
-          // when both tabs use the same user account
-          if (signal.nonce !== myNonceRef.current) {
-            console.log('[WebRTC] 📥 Processing:', signal.type);
-            handleSignal(signal);
-          } else {
-            console.log('[WebRTC] 🚫 Ignoring own signal:', signal.type);
-          }
+        const signal = JSON.parse(msg.body);
+
+        console.log('[WebRTC] 📨 Signal:', {
+          type: signal.type,
+          from: signal.from,
+          me: userId,
         });
+
+        // Ignore only if the signal was sent by this user
+        if (signal.from === userId) {
+          console.log('[WebRTC] 🚫 Ignoring own signal:', signal.type);
+          return;
+        }
+
+        console.log('[WebRTC] 📥 Processing:', signal.type);
+        handleSignal(signal);
+      });
 
         if (userRole === 'DOCTOR') {
           setTimeout(createOffer, 1000);
@@ -164,7 +166,11 @@ export default function VideoSession() {
     try {
       const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
       await pc.setLocalDescription(offer);
-      sendSignal({ type: 'offer', sdp: offer.sdp, from: userId, nonce: myNonceRef.current });
+      sendSignal({
+        type: 'offer',
+        sdp: offer.sdp,
+        from: userId
+      });
       console.log('[WebRTC] 📤 Offer sent');
     } catch (e) {
       console.error('[WebRTC] Offer error:', e);
@@ -185,7 +191,11 @@ export default function VideoSession() {
 
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
-        sendSignal({ type: 'answer', sdp: answer.sdp, from: userId, nonce: myNonceRef.current });
+        sendSignal({
+          type: 'answer',
+          sdp: answer.sdp,
+          from: userId
+        });
         console.log('[WebRTC] 📤 Answer sent');
       } else if (signal.type === 'answer') {
         console.log('[WebRTC] 📥 Got answer');

@@ -22,7 +22,8 @@ export default function VideoSession() {
   const localStreamRef = useRef<MediaStream | null>(null);
   const stompClientRef = useRef<Client | null>(null);
   const pendingCandidatesRef = useRef<RTCIceCandidateInit[]>([]);
-  const wsSessionIdRef = useRef<string | null>(null);
+  // Unique nonce per browser tab – used to filter out own signals
+  const myNonceRef = useRef<string>(crypto.randomUUID());
 
   const [messages, setMessages] = useState<any[]>([]);
   const [messageText, setMessageText] = useState('');
@@ -86,7 +87,7 @@ export default function VideoSession() {
 
       pc.onicecandidate = (event) => {
         if (event.candidate) {
-          sendSignal({ type: 'ice', candidate: event.candidate.toJSON(), from: userId });
+          sendSignal({ type: 'ice', candidate: event.candidate.toJSON(), from: userId, nonce: myNonceRef.current });
         }
       };
 
@@ -113,52 +114,30 @@ export default function VideoSession() {
       debug: (str) => console.log('[STOMP]', str),
 
       onConnect: () => {
-        console.log('[STOMP] ✅ Connected');
-
-        // Try to capture our WebSocket session ID for filtering
-        try {
-          wsSessionIdRef.current = (client as any)?._webSocket?.url || null;
-        } catch { /* ignore */ }
-
+        console.log('[STOMP] ✅ Connected – my nonce:', myNonceRef.current);
         setIsConnected(true);
 
         client.subscribe(`/topic/chat/${sessionId}`, (msg) => {
           setMessages((prev) => [...prev, JSON.parse(msg.body)]);
         });
 
-        // Capture our own WebSocket session ID from the CONNECTED frame
-        // The backend adds wsSessionId to each signal via SimpMessageHeaderAccessor
-        let myWsSessionId: string | null = null;
-
         client.subscribe(`/topic/signal/${sessionId}`, (msg) => {
           const signal = JSON.parse(msg.body);
           
-          console.log('[WebRTC] 📨 Raw signal received:', {
+          console.log('[WebRTC] 📨 Signal:', {
             type: signal.type,
-            signalFrom: signal.from,
-            myUserId: userId,
-            signalWsSessionId: signal.wsSessionId,
-            myWsSessionId: myWsSessionId,
+            from: signal.from,
+            nonce: signal.nonce,
+            myNonce: myNonceRef.current,
           });
           
-          // Learn our wsSessionId from the first echo of our own signal
-          if (signal.from === userId && !myWsSessionId && signal.wsSessionId) {
-            myWsSessionId = signal.wsSessionId;
-            wsSessionIdRef.current = signal.wsSessionId;
-            console.log('[WebRTC] 🔑 Learned my wsSessionId:', myWsSessionId);
-          }
-          
-          // CRITICAL: Filter by wsSessionId (not userId) so it works 
-          // even if both users share the same account during testing
-          const isOwnSignal = myWsSessionId 
-            ? signal.wsSessionId === myWsSessionId 
-            : signal.from === userId;
-          
-          if (!isOwnSignal) {
-            console.log('[WebRTC] 📥 Processing signal type:', signal.type, 'from:', signal.from);
+          // CRITICAL: Filter by nonce (unique per tab) – works even
+          // when both tabs use the same user account
+          if (signal.nonce !== myNonceRef.current) {
+            console.log('[WebRTC] 📥 Processing:', signal.type);
             handleSignal(signal);
           } else {
-            console.log('[WebRTC] 🚫 Ignoring own signal:', signal.type, 'wsSession:', signal.wsSessionId);
+            console.log('[WebRTC] 🚫 Ignoring own signal:', signal.type);
           }
         });
 
@@ -185,7 +164,7 @@ export default function VideoSession() {
     try {
       const offer = await pc.createOffer({ offerToReceiveAudio: true, offerToReceiveVideo: true });
       await pc.setLocalDescription(offer);
-      sendSignal({ type: 'offer', sdp: offer.sdp, from: userId });
+      sendSignal({ type: 'offer', sdp: offer.sdp, from: userId, nonce: myNonceRef.current });
       console.log('[WebRTC] 📤 Offer sent');
     } catch (e) {
       console.error('[WebRTC] Offer error:', e);
@@ -206,7 +185,7 @@ export default function VideoSession() {
 
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
-        sendSignal({ type: 'answer', sdp: answer.sdp, from: userId });
+        sendSignal({ type: 'answer', sdp: answer.sdp, from: userId, nonce: myNonceRef.current });
         console.log('[WebRTC] 📤 Answer sent');
       } else if (signal.type === 'answer') {
         console.log('[WebRTC] 📥 Got answer');

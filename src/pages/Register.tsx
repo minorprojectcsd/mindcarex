@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { UserRole } from '@/types';
-import mindcareLogo from '@/assets/mindcare-logo.png';
+import mindcareLogo from '@/assets/mindcare-brain.png';
 
 export default function Register() {
   const navigate = useNavigate();

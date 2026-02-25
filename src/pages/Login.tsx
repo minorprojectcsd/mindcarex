@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import mindcareLogo from '@/assets/mindcare-logo.png';
+import mindcareLogo from '@/assets/mindcare-brain.png';
 
 export default function Login() {
   const navigate = useNavigate();

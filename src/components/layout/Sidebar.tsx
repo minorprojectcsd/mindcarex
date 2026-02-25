@@ -17,7 +17,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { useTheme } from 'next-themes';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import mindcareLogo from '@/assets/mindcare-logo.png';
+import mindcareLogo from '@/assets/mindcare-brain.png';
 
 const patientNavItems = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/patient/dashboard' },

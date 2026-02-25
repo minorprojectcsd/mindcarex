@@ -45,26 +45,46 @@ export default function VideoSession() {
   }, []);
 
   const initConnection = async () => {
-    try {
-      console.log('[WebRTC] 🔄 Initializing connection...');
+    console.log('[WebRTC] 🔄 Initializing connection...');
 
-      // 1️⃣ Get camera & mic
+    try {
+      // -----------------------------
+      // 1️⃣ Get camera & microphone
+      // -----------------------------
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { width: 1280, height: 720 },
         audio: { echoCancellation: true, noiseSuppression: true },
       });
 
       localStreamRef.current = stream;
+
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = stream;
       }
 
       console.log('[WebRTC] ✅ Local media stream acquired');
 
-      // 2️⃣ Fetch TURN credentials from backend
+      // -----------------------------
+      // 2️⃣ Fetch TURN credentials (WITH JWT)
+      // -----------------------------
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        console.error('[TURN] ❌ No JWT token found');
+        alert('Authentication required. Please login again.');
+        return;
+      }
+
       let turnData;
+
       try {
-        const turnResponse = await fetch(`${API_BASE}/api/turn/token`);
+        const turnResponse = await fetch(`${API_BASE}/api/turn/token`, {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json"
+          }
+        });
 
         if (!turnResponse.ok) {
           throw new Error(`TURN fetch failed: ${turnResponse.status}`);
@@ -73,18 +93,21 @@ export default function VideoSession() {
         turnData = await turnResponse.json();
 
         if (!turnData?.username || !turnData?.credential) {
-          throw new Error('Invalid TURN response structure');
+          throw new Error('Invalid TURN response format');
         }
 
         console.log('[TURN] ✅ Credentials received');
       } catch (turnError) {
         console.error('[TURN] ❌ Failed to fetch TURN credentials:', turnError);
-        alert('Failed to initialize secure connection. Please refresh.');
+        alert('Secure connection initialization failed. Please refresh.');
         return;
       }
 
-      // 3️⃣ Create PeerConnection with your dedicated TURN
+      // -----------------------------
+      // 3️⃣ Create PeerConnection
+      // -----------------------------
       let pc: RTCPeerConnection;
+
       try {
         pc = new RTCPeerConnection({
           iceServers: [
@@ -102,21 +125,25 @@ export default function VideoSession() {
           iceTransportPolicy: "all" // change to "relay" for strict TURN testing
         });
 
-        console.log('[WebRTC] ✅ PeerConnection created with dedicated TURN');
+        console.log('[WebRTC] ✅ PeerConnection created');
       } catch (pcError) {
         console.error('[WebRTC] ❌ Failed to create PeerConnection:', pcError);
         alert('WebRTC initialization failed.');
         return;
       }
 
+      // -----------------------------
       // 4️⃣ Add local tracks
-      stream.getTracks().forEach((track) => {
+      // -----------------------------
+      stream.getTracks().forEach(track => {
         pc.addTrack(track, stream);
       });
 
-      // 5️⃣ Remote track handling
+      // -----------------------------
+      // 5️⃣ Handle remote tracks
+      // -----------------------------
       pc.ontrack = (event) => {
-        console.log('[WebRTC] 🎥 Remote track received:', event.track.kind);
+        console.log('[WebRTC] 🎥 Remote track:', event.track.kind);
 
         if (!remoteVideoRef.current) return;
 
@@ -135,7 +162,9 @@ export default function VideoSession() {
         }, 300);
       };
 
+      // -----------------------------
       // 6️⃣ ICE candidate handling
+      // -----------------------------
       pc.onicecandidate = (event) => {
         if (event.candidate) {
           console.log('[WebRTC] 📤 Sending ICE candidate');
@@ -147,19 +176,21 @@ export default function VideoSession() {
         }
       };
 
+      // -----------------------------
       // 7️⃣ ICE state monitoring
+      // -----------------------------
       pc.oniceconnectionstatechange = () => {
         console.log('[WebRTC] ICE State:', pc.iceConnectionState);
 
         if (pc.iceConnectionState === 'connected') {
-          console.log('✅ ICE connected successfully');
+          console.log('✅ ICE connected');
         }
 
         if (pc.iceConnectionState === 'failed') {
           console.error('❌ ICE failed');
 
           if (userRole === 'DOCTOR' && pc.restartIce) {
-            console.log('[WebRTC] 🔄 Attempting ICE restart...');
+            console.log('[WebRTC] 🔄 Restarting ICE...');
             pc.restartIce();
             setTimeout(createOffer, 1000);
           }
@@ -170,9 +201,11 @@ export default function VideoSession() {
         }
       };
 
+      // -----------------------------
       // 8️⃣ Connection state monitoring
+      // -----------------------------
       pc.onconnectionstatechange = () => {
-        console.log('[WebRTC] PeerConnection State:', pc.connectionState);
+        console.log('[WebRTC] Connection State:', pc.connectionState);
         setConnectionState(pc.connectionState);
 
         if (pc.connectionState === 'connected') {
@@ -180,22 +213,23 @@ export default function VideoSession() {
         }
 
         if (pc.connectionState === 'failed') {
-          console.error('❌ PeerConnection failed completely');
+          console.error('❌ PeerConnection failed');
           alert('Connection failed. Please refresh.');
-        }
-
-        if (pc.connectionState === 'disconnected') {
-          console.warn('⚠️ PeerConnection disconnected');
         }
       };
 
+      // -----------------------------
+      // 9️⃣ Save PeerConnection
+      // -----------------------------
       peerConnectionRef.current = pc;
 
-      // 9️⃣ Connect signaling after PeerConnection ready
+      // -----------------------------
+      // 🔟 Connect WebSocket signaling
+      // -----------------------------
       connectWebSocket();
 
     } catch (mediaError) {
-      console.error('[WebRTC] ❌ Failed to access camera/microphone:', mediaError);
+      console.error('[WebRTC] ❌ Media access failed:', mediaError);
       alert('Cannot access camera or microphone. Please allow permissions.');
     }
   };

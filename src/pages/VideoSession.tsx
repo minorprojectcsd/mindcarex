@@ -45,129 +45,55 @@ export default function VideoSession() {
   }, []);
 
   const initConnection = async () => {
-    console.log('[WebRTC] 🔄 Initializing connection...');
-
     try {
-      // -----------------------------
-      // 1️⃣ Get camera & microphone
-      // -----------------------------
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { width: 1280, height: 720 },
         audio: { echoCancellation: true, noiseSuppression: true },
       });
 
       localStreamRef.current = stream;
+      if (localVideoRef.current) localVideoRef.current.srcObject = stream;
+      console.log('[WebRTC] Got local stream');
 
-      if (localVideoRef.current) {
-        localVideoRef.current.srcObject = stream;
-      }
-
-      console.log('[WebRTC] ✅ Local media stream acquired');
-
-      // -----------------------------
-      // 2️⃣ Fetch TURN credentials (WITH JWT)
-      // -----------------------------
-      const token = localStorage.getItem("token");
-
-      if (!token) {
-        console.error('[TURN] ❌ No JWT token found');
-        alert('Authentication required. Please login again.');
-        return;
-      }
-
-      let turnData;
-
-      try {
-        const turnResponse = await fetch(`${API_BASE}/api/turn/token`, {
-          method: "GET",
-          headers: {
-            "Authorization": `Bearer ${token}`,
-            "Content-Type": "application/json"
+      const pc = new RTCPeerConnection({
+        iceServers: [
+          { urls: 'stun:stun.l.google.com:19302' },
+          {
+            urls: [
+              'turn:openrelay.metered.ca:80?transport=tcp',
+              'turn:openrelay.metered.ca:443?transport=tcp',
+              'turns:openrelay.metered.ca:443?transport=tcp'
+            ],
+            username: 'openrelayproject',
+            credential: 'openrelayproject'
           }
-        });
-
-        if (!turnResponse.ok) {
-          throw new Error(`TURN fetch failed: ${turnResponse.status}`);
-        }
-
-        turnData = await turnResponse.json();
-
-        if (!turnData?.username || !turnData?.credential) {
-          throw new Error('Invalid TURN response format');
-        }
-
-        console.log('[TURN] ✅ Credentials received');
-      } catch (turnError) {
-        console.error('[TURN] ❌ Failed to fetch TURN credentials:', turnError);
-        alert('Secure connection initialization failed. Please refresh.');
-        return;
-      }
-
-      // -----------------------------
-      // 3️⃣ Create PeerConnection
-      // -----------------------------
-      let pc: RTCPeerConnection;
-
-      try {
-        pc = new RTCPeerConnection({
-          iceServers: [
-            {
-              urls: [
-                "stun:mindcarex.metered.live:80",
-                "turn:mindcarex.metered.live:80",
-                "turn:mindcarex.metered.live:443",
-                "turns:mindcarex.metered.live:443?transport=tcp"
-              ],
-              username: turnData.username,
-              credential: turnData.credential
-            }
-          ],
-          iceTransportPolicy: "all" // change to "relay" for strict TURN testing
-        });
-
-        console.log('[WebRTC] ✅ PeerConnection created');
-      } catch (pcError) {
-        console.error('[WebRTC] ❌ Failed to create PeerConnection:', pcError);
-        alert('WebRTC initialization failed.');
-        return;
-      }
-
-      // -----------------------------
-      // 4️⃣ Add local tracks
-      // -----------------------------
-      stream.getTracks().forEach(track => {
-        pc.addTrack(track, stream);
+        ]
       });
 
-      // -----------------------------
-      // 5️⃣ Handle remote tracks
-      // -----------------------------
-      pc.ontrack = (event) => {
-        console.log('[WebRTC] 🎥 Remote track:', event.track.kind);
+      stream.getTracks().forEach((t) => pc.addTrack(t, stream));
 
+      pc.ontrack = (event) => {
+        console.log('[WebRTC] 🎥 GOT REMOTE TRACK:', event.track.kind);
         if (!remoteVideoRef.current) return;
 
-        let remoteStream = remoteVideoRef.current.srcObject as MediaStream | null;
-
-        if (!remoteStream) {
-          remoteStream = new MediaStream();
-          remoteVideoRef.current.srcObject = remoteStream;
+        let rs = remoteVideoRef.current.srcObject as MediaStream | null;
+        if (!rs) {
+          rs = new MediaStream();
+          remoteVideoRef.current.srcObject = rs;
         }
-
-        remoteStream.addTrack(event.track);
+        rs.addTrack(event.track);
         setHasRemoteVideo(true);
 
         setTimeout(() => {
-          remoteVideoRef.current?.play().catch(() => {});
-        }, 300);
+          remoteVideoRef.current
+            ?.play()
+            .then(() => console.log('[WebRTC] ✅ Remote video playing'))
+            .catch((e) => console.log('[WebRTC] Play error:', e.message));
+        }, 500);
       };
 
-      // -----------------------------
-      // 6️⃣ ICE candidate handling
-      // -----------------------------
       pc.onicecandidate = (event) => {
         if (event.candidate) {
-          console.log('[WebRTC] 📤 Sending ICE candidate');
           sendSignal({
             type: 'ice',
             candidate: event.candidate.toJSON(),
@@ -176,61 +102,17 @@ export default function VideoSession() {
         }
       };
 
-      // -----------------------------
-      // 7️⃣ ICE state monitoring
-      // -----------------------------
-      pc.oniceconnectionstatechange = () => {
-        console.log('[WebRTC] ICE State:', pc.iceConnectionState);
-
-        if (pc.iceConnectionState === 'connected') {
-          console.log('✅ ICE connected');
-        }
-
-        if (pc.iceConnectionState === 'failed') {
-          console.error('❌ ICE failed');
-
-          if (userRole === 'DOCTOR' && pc.restartIce) {
-            console.log('[WebRTC] 🔄 Restarting ICE...');
-            pc.restartIce();
-            setTimeout(createOffer, 1000);
-          }
-        }
-
-        if (pc.iceConnectionState === 'disconnected') {
-          console.warn('⚠️ ICE disconnected (may recover)');
-        }
-      };
-
-      // -----------------------------
-      // 8️⃣ Connection state monitoring
-      // -----------------------------
+      pc.oniceconnectionstatechange = () => console.log('[WebRTC] ICE:', pc.iceConnectionState);
       pc.onconnectionstatechange = () => {
-        console.log('[WebRTC] Connection State:', pc.connectionState);
+        console.log('[WebRTC] Connection:', pc.connectionState);
         setConnectionState(pc.connectionState);
-
-        if (pc.connectionState === 'connected') {
-          console.log('✅ WebRTC fully connected');
-        }
-
-        if (pc.connectionState === 'failed') {
-          console.error('❌ PeerConnection failed');
-          alert('Connection failed. Please refresh.');
-        }
       };
 
-      // -----------------------------
-      // 9️⃣ Save PeerConnection
-      // -----------------------------
       peerConnectionRef.current = pc;
-
-      // -----------------------------
-      // 🔟 Connect WebSocket signaling
-      // -----------------------------
       connectWebSocket();
-
-    } catch (mediaError) {
-      console.error('[WebRTC] ❌ Media access failed:', mediaError);
-      alert('Cannot access camera or microphone. Please allow permissions.');
+    } catch (error) {
+      console.error('[WebRTC] Failed to get media:', error);
+      alert('Cannot access camera/microphone. Please allow permissions.');
     }
   };
 

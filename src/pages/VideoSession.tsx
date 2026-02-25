@@ -67,7 +67,8 @@ export default function VideoSession() {
             username: 'openrelayproject',
             credential: 'openrelayproject'
           }
-        ]
+        ],
+        iceTransportPolicy: 'relay'
       });
 
       stream.getTracks().forEach((t) => pc.addTrack(t, stream));

@@ -55,21 +55,41 @@ export default function VideoSession() {
       if (localVideoRef.current) localVideoRef.current.srcObject = stream;
       console.log('[WebRTC] Got local stream');
 
-      const pc = new RTCPeerConnection({
-        iceServers: [
-          { urls: 'stun:stun.l.google.com:19302' },
-          {
-            urls: [
-              'turn:openrelay.metered.ca:80?transport=tcp',
-              'turn:openrelay.metered.ca:443?transport=tcp',
-              'turns:openrelay.metered.ca:443?transport=tcp'
-            ],
-            username: 'openrelayproject',
-            credential: 'openrelayproject'
-          }
-        ],
-        iceTransportPolicy: 'relay'
-      });
+      let pc: RTCPeerConnection;
+      try {
+        pc = new RTCPeerConnection({
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' },
+            {
+              urls: [
+                'turn:openrelay.metered.ca:80?transport=tcp',
+                'turn:openrelay.metered.ca:443?transport=tcp',
+                'turns:openrelay.metered.ca:443?transport=tcp'
+              ],
+              username: 'openrelayproject',
+              credential: 'openrelayproject'
+            }
+          ],
+        });
+        console.log('[WebRTC] ✅ PeerConnection created with TURN servers');
+      } catch (error) {
+        console.error('[WebRTC] ❌ Failed to create PeerConnection with TURN, trying STUN only:', error);
+        try {
+          pc = new RTCPeerConnection({
+            iceServers: [
+              { urls: 'stun:stun.l.google.com:19302' },
+              { urls: 'stun:stun1.l.google.com:19302' },
+              { urls: 'stun:stun2.l.google.com:19302' }
+            ]
+          });
+          console.log('[WebRTC] ⚠️ Using STUN-only fallback (may not work across strict NATs)');
+        } catch (fallbackError) {
+          console.error('[WebRTC] ❌ Critical: Cannot create PeerConnection at all:', fallbackError);
+          alert('WebRTC initialization failed. Please refresh and try again.');
+          return;
+        }
+      }
 
       stream.getTracks().forEach((t) => pc.addTrack(t, stream));
 
@@ -103,10 +123,42 @@ export default function VideoSession() {
         }
       };
 
-      pc.oniceconnectionstatechange = () => console.log('[WebRTC] ICE:', pc.iceConnectionState);
+      pc.oniceconnectionstatechange = () => {
+        console.log('[WebRTC] ICE:', pc.iceConnectionState);
+
+        if (pc.iceConnectionState === 'failed') {
+          console.error('[WebRTC] ❌ ICE connection failed');
+          if (userRole === 'DOCTOR' && pc.restartIce) {
+            console.log('[WebRTC] 🔄 Attempting ICE restart...');
+            pc.restartIce();
+            setTimeout(createOffer, 1000);
+          }
+        }
+
+        if (pc.iceConnectionState === 'disconnected') {
+          console.warn('[WebRTC] ⚠️ ICE disconnected - connection may recover');
+        }
+
+        if (pc.iceConnectionState === 'connected') {
+          console.log('[WebRTC] ✅ ICE connected successfully!');
+        }
+      };
       pc.onconnectionstatechange = () => {
         console.log('[WebRTC] Connection:', pc.connectionState);
         setConnectionState(pc.connectionState);
+
+        if (pc.connectionState === 'failed') {
+          console.error('[WebRTC] ❌ Connection failed completely');
+          alert('Connection failed. Please refresh and try again.');
+        }
+
+        if (pc.connectionState === 'disconnected') {
+          console.warn('[WebRTC] ⚠️ Connection disconnected');
+        }
+
+        if (pc.connectionState === 'connected') {
+          console.log('[WebRTC] ✅ Connection established successfully!');
+        }
       };
 
       peerConnectionRef.current = pc;

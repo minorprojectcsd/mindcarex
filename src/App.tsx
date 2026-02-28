@@ -29,6 +29,13 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import VideoSession from "./pages/VideoSession";
 import Settings from "./pages/Settings";
 
+// Analysis & Notification Pages
+import ChatAnalysis from "./pages/analysis/ChatAnalysis";
+import EmotionAnalysis from "./pages/analysis/EmotionAnalysis";
+import VoiceAnalysis from "./pages/analysis/VoiceAnalysis";
+import SessionSummaryPage from "./pages/analysis/SessionSummaryPage";
+import Notifications from "./pages/notifications/Notifications";
+
 const queryClient = new QueryClient();
 
 function RoleBasedRedirect() {
@@ -134,6 +141,48 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <VideoSession />
+              </ProtectedRoute>
+                }
+              />
+
+              {/* Analysis Routes */}
+              <Route
+                path="/analysis/chat/:sessionId?"
+                element={
+                  <ProtectedRoute allowedRoles={['DOCTOR', 'PATIENT']}>
+                    <ChatAnalysis />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/analysis/emotion/:sessionId?"
+                element={
+                  <ProtectedRoute allowedRoles={['DOCTOR', 'PATIENT']}>
+                    <EmotionAnalysis />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/analysis/voice/:sessionId?"
+                element={
+                  <ProtectedRoute allowedRoles={['DOCTOR', 'PATIENT']}>
+                    <VoiceAnalysis />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/analysis/summary/:sessionId?"
+                element={
+                  <ProtectedRoute allowedRoles={['DOCTOR']}>
+                    <SessionSummaryPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/notifications"
+                element={
+                  <ProtectedRoute>
+                    <Notifications />
                   </ProtectedRoute>
                 }
               />

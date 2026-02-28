@@ -27,6 +27,7 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 
 // Shared Pages
 import VideoSession from "./pages/VideoSession";
+import ChatSession from "./pages/ChatSession";
 import Settings from "./pages/Settings";
 
 // Analysis & Notification Pages
@@ -141,7 +142,15 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <VideoSession />
-              </ProtectedRoute>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/chat-session/:sessionId"
+                element={
+                  <ProtectedRoute>
+                    <ChatSession />
+                  </ProtectedRoute>
                 }
               />
 

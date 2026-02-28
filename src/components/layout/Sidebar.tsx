@@ -18,6 +18,7 @@ import {
   AudioLines,
   FileText,
   Bell,
+  MessageCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTheme } from 'next-themes';
@@ -38,7 +39,8 @@ const patientNavItems = [
 const doctorNavItems = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/doctor/dashboard' },
   { icon: Users, label: 'Appointments', href: '/doctor/appointments' },
-  { icon: Video, label: 'Start Session', href: '/video' },
+  { icon: MessageCircle, label: 'Chat Session', href: '/chat-session' },
+  { icon: Video, label: 'Chat + Video Session', href: '/video' },
   { icon: MessageSquareText, label: 'Chat Analysis', href: '/analysis/chat' },
   { icon: ScanFace, label: 'Emotion Analysis', href: '/analysis/emotion' },
   { icon: AudioLines, label: 'Voice Analysis', href: '/analysis/voice' },

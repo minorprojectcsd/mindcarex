@@ -13,6 +13,11 @@ import {
   Sun,
   Moon,
   Menu,
+  MessageSquareText,
+  ScanFace,
+  AudioLines,
+  FileText,
+  Bell,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTheme } from 'next-themes';
@@ -23,6 +28,10 @@ const patientNavItems = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/patient/dashboard' },
   { icon: Calendar, label: 'My Appointments', href: '/patient/appointments' },
   { icon: Video, label: 'Book Appointment', href: '/patient/book-appointment' },
+  { icon: MessageSquareText, label: 'Chat Analysis', href: '/analysis/chat' },
+  { icon: ScanFace, label: 'Emotion Analysis', href: '/analysis/emotion' },
+  { icon: AudioLines, label: 'Voice Analysis', href: '/analysis/voice' },
+  { icon: Bell, label: 'Notifications', href: '/notifications' },
   { icon: Settings, label: 'Settings', href: '/settings' },
 ];
 
@@ -30,6 +39,11 @@ const doctorNavItems = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/doctor/dashboard' },
   { icon: Users, label: 'Appointments', href: '/doctor/appointments' },
   { icon: Video, label: 'Start Session', href: '/video' },
+  { icon: MessageSquareText, label: 'Chat Analysis', href: '/analysis/chat' },
+  { icon: ScanFace, label: 'Emotion Analysis', href: '/analysis/emotion' },
+  { icon: AudioLines, label: 'Voice Analysis', href: '/analysis/voice' },
+  { icon: FileText, label: 'Session Summary', href: '/analysis/summary' },
+  { icon: Bell, label: 'Notifications', href: '/notifications' },
   { icon: Settings, label: 'Settings', href: '/settings' },
 ];
 

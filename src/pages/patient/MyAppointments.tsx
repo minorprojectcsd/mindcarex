@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { Calendar, ArrowLeft, Video, XCircle } from 'lucide-react';
+import { Calendar, ArrowLeft, Video, XCircle, Mail } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
@@ -83,7 +83,7 @@ export default function MyAppointments() {
             )}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Badge
             variant={
               isLive ? 'default' :
@@ -94,6 +94,11 @@ export default function MyAppointments() {
           >
             {isLive ? '🟢 Live' : appointment.status}
           </Badge>
+          {(isBooked || appointment.status === 'COMPLETED') && (
+            <span title="Email confirmation sent">
+              <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+            </span>
+          )}
           {isLive && appointment.sessionId && (
             <Button size="sm" onClick={() => navigate(`/video/${appointment.sessionId}`)}>
               <Video className="mr-1 h-3 w-3" />

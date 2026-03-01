@@ -4,6 +4,7 @@ import { Client } from '@stomp/stompjs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Mic, MicOff, Video, VideoOff, PhoneOff, Send, User } from 'lucide-react';
+import { SessionSummaryModal, SessionSummaryData } from '@/components/session/SessionSummaryModal';
 import { sessionService, SessionDetails } from '@/services/sessionService';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://mindcarex-backend.onrender.com';
@@ -36,6 +37,8 @@ export default function VideoSession() {
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
   const [sessionDetails, setSessionDetails] = useState<SessionDetails | null>(null);
+  const [showSummaryModal, setShowSummaryModal] = useState(false);
+  const [endingSession, setEndingSession] = useState(false);
 
   const remoteName = sessionDetails
     ? userRole === 'DOCTOR'
@@ -257,12 +260,18 @@ export default function VideoSession() {
     stompClientRef.current?.deactivate();
   };
 
-  const handleEndSession = async () => {
+  const handleEndSession = async (summaryData?: SessionSummaryData) => {
+    setEndingSession(true);
     if (userRole === 'DOCTOR') {
       try {
+        const body = summaryData?.aiSummary ? summaryData : undefined;
         await fetch(`${API_BASE}/api/sessions/${sessionId}/end`, {
           method: 'POST',
-          headers: { Authorization: `Bearer ${token}` },
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: body ? JSON.stringify(body) : undefined,
         });
       } catch (e) {
         console.log('Could not end session:', e);
@@ -270,6 +279,14 @@ export default function VideoSession() {
     }
     cleanup();
     navigate('/dashboard');
+  };
+
+  const handleEndClick = () => {
+    if (userRole === 'DOCTOR') {
+      setShowSummaryModal(true);
+    } else {
+      handleEndSession();
+    }
   };
 
   return (
@@ -283,7 +300,7 @@ export default function VideoSession() {
             <span className="hidden xs:inline">{isConnected ? 'Connected' : 'Disconnected'}</span>
           </span>
         </div>
-        <Button variant="destructive" size="sm" className="shrink-0 text-xs sm:text-sm" onClick={handleEndSession}>
+        <Button variant="destructive" size="sm" className="shrink-0 text-xs sm:text-sm" onClick={handleEndClick}>
           <PhoneOff className="mr-1 h-3.5 w-3.5 sm:h-4 sm:w-4" />
           <span className="hidden sm:inline">{userRole === 'DOCTOR' ? 'End Session' : 'Leave'}</span>
           <span className="sm:hidden">End</span>
@@ -337,7 +354,7 @@ export default function VideoSession() {
             <Button variant="ghost" size="icon" className={`h-9 w-9 rounded-full text-background hover:bg-background/20 sm:h-10 sm:w-10 ${isVideoOff ? 'bg-destructive/80' : ''}`} onClick={toggleVideo}>
               {isVideoOff ? <VideoOff className="h-4 w-4 sm:h-5 sm:w-5" /> : <Video className="h-4 w-4 sm:h-5 sm:w-5" />}
             </Button>
-            <Button variant="destructive" size="icon" className="h-9 w-9 rounded-full sm:h-10 sm:w-10" onClick={handleEndSession}>
+            <Button variant="destructive" size="icon" className="h-9 w-9 rounded-full sm:h-10 sm:w-10" onClick={handleEndClick}>
               <PhoneOff className="h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
           </div>
@@ -381,6 +398,14 @@ export default function VideoSession() {
           </div>
         </div>
       </div>
+
+      {/* Session Summary Modal for Doctors */}
+      <SessionSummaryModal
+        open={showSummaryModal}
+        onClose={() => setShowSummaryModal(false)}
+        onSubmit={(data) => handleEndSession(data)}
+        loading={endingSession}
+      />
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -19,11 +19,13 @@ import {
   FileText,
   Bell,
   MessageCircle,
+  Mail,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTheme } from 'next-themes';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import mindcareLogo from '@/assets/mindcare-brain.png';
+import emailNotificationService from '@/services/emailNotificationService';
 
 const patientNavItems = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/patient/dashboard' },
@@ -51,7 +53,7 @@ const doctorNavItems = [
   { icon: Settings, label: 'Settings', href: '/settings' },
 ];
 
-function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
+function SidebarContent({ onNavigate, failedCount }: { onNavigate?: () => void; failedCount: number }) {
   const { user, logout } = useAuth();
   const location = useLocation();
   const { theme, setTheme } = useTheme();
@@ -87,6 +89,11 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
             >
               <item.icon className="h-5 w-5" />
               {item.label}
+              {item.label === 'Notifications' && failedCount > 0 && (
+                <span className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-[10px] font-bold text-destructive-foreground">
+                  {failedCount}
+                </span>
+              )}
             </Link>
           );
         })}
@@ -138,6 +145,14 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
 export function Sidebar() {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
+  const [failedCount, setFailedCount] = useState(0);
+
+  useEffect(() => {
+    if (!user) return;
+    emailNotificationService.getStatistics()
+      .then((s) => setFailedCount(s.failed))
+      .catch(() => {});
+  }, [user]);
 
   if (!user) return null;
 
@@ -156,13 +171,13 @@ export function Sidebar() {
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="w-64 p-0 bg-sidebar">
-            <SidebarContent onNavigate={() => setOpen(false)} />
+            <SidebarContent onNavigate={() => setOpen(false)} failedCount={failedCount} />
           </SheetContent>
         </Sheet>
       </div>
 
       <aside className="fixed left-0 top-0 z-40 hidden h-screen w-64 border-r border-sidebar-border bg-sidebar md:block">
-        <SidebarContent />
+        <SidebarContent failedCount={failedCount} />
       </aside>
     </>
   );

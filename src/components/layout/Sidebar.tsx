@@ -29,6 +29,8 @@ const patientNavItems = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/patient/dashboard' },
   { icon: Calendar, label: 'My Appointments', href: '/patient/appointments' },
   { icon: Video, label: 'Book Appointment', href: '/patient/book-appointment' },
+  { icon: MessageCircle, label: 'Chat Session', href: '/chat-session' },
+  { icon: Video, label: 'Chat + Video Session', href: '/video' },
   { icon: MessageSquareText, label: 'Chat Analysis', href: '/analysis/chat' },
   { icon: ScanFace, label: 'Emotion Analysis', href: '/analysis/emotion' },
   { icon: AudioLines, label: 'Voice Analysis', href: '/analysis/voice' },

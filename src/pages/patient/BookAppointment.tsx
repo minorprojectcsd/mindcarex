@@ -38,8 +38,8 @@ export default function BookAppointment() {
     mutationFn: appointmentService.createAppointment,
     onSuccess: () => {
       toast({
-        title: 'Appointment Booked',
-        description: 'Your appointment has been successfully scheduled.',
+        title: '✅ Appointment Booked',
+        description: 'Your appointment has been scheduled. Confirmation emails sent to you and the doctor.',
       });
       navigate('/patient/appointments');
     },

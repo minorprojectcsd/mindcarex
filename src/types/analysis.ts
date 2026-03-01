@@ -134,12 +134,22 @@ export interface NotificationPreferences {
 
 export interface NotificationLog {
   id: string;
-  userId: string;
-  type: NotificationType;
+  recipient: string;
   subject: string;
-  sentAt: string;
-  status: 'sent' | 'failed' | 'pending';
-  appointmentId?: string;
+  emailType: string;
+  status: 'SENT' | 'FAILED' | 'PENDING';
+  errorMessage: string | null;
+  appointmentId: string;
+  sessionId: string | null;
+  createdAt: string;
+  sentAt: string | null;
+}
+
+export interface NotificationStats {
+  total: number;
+  sent: number;
+  failed: number;
+  pending: number;
 }
 
 export interface SendNotificationRequest {

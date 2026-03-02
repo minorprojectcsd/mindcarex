@@ -20,6 +20,7 @@ import {
   Bell,
   MessageCircle,
   Mail,
+  UserCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTheme } from 'next-themes';
@@ -37,6 +38,7 @@ const patientNavItems = [
   { icon: ScanFace, label: 'Emotion Analysis', href: '/analysis/emotion' },
   { icon: AudioLines, label: 'Voice Analysis', href: '/analysis/voice' },
   { icon: Bell, label: 'Notifications', href: '/notifications' },
+  { icon: UserCircle, label: 'My Profile', href: '/profile' },
   { icon: Settings, label: 'Settings', href: '/settings' },
 ];
 
@@ -50,9 +52,9 @@ const doctorNavItems = [
   { icon: AudioLines, label: 'Voice Analysis', href: '/analysis/voice' },
   { icon: FileText, label: 'Session Summary', href: '/analysis/summary' },
   { icon: Bell, label: 'Notifications', href: '/notifications' },
+  { icon: UserCircle, label: 'My Profile', href: '/profile' },
   { icon: Settings, label: 'Settings', href: '/settings' },
 ];
-
 function SidebarContent({ onNavigate, failedCount }: { onNavigate?: () => void; failedCount: number }) {
   const { user, logout } = useAuth();
   const location = useLocation();

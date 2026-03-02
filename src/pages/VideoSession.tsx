@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Mic, MicOff, Video, VideoOff, PhoneOff, Send, User } from 'lucide-react';
 import { SessionSummaryModal, SessionSummaryData } from '@/components/session/SessionSummaryModal';
-import { sessionService, SessionDetails } from '@/services/sessionService';
+import { sessionService, SessionDetails, getParticipantName } from '@/services/sessionService';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://mindcarex-backend.onrender.com';
 const WS_URL = API_BASE.replace(/^http/, 'ws') + '/ws';
@@ -42,14 +42,14 @@ export default function VideoSession() {
 
   const remoteName = sessionDetails
     ? userRole === 'DOCTOR'
-      ? sessionDetails.appointment.patient.fullName
-      : sessionDetails.appointment.doctor.fullName
+      ? getParticipantName(sessionDetails.appointment.patient)
+      : getParticipantName(sessionDetails.appointment.doctor)
     : 'Participant';
 
   const localName = sessionDetails
     ? userRole === 'DOCTOR'
-      ? sessionDetails.appointment.doctor.fullName
-      : sessionDetails.appointment.patient.fullName
+      ? getParticipantName(sessionDetails.appointment.doctor)
+      : getParticipantName(sessionDetails.appointment.patient)
     : userName;
 
   // Auto-scroll chat

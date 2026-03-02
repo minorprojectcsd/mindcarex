@@ -4,7 +4,8 @@ import { Client } from '@stomp/stompjs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Send, PhoneOff, User, MessageSquare } from 'lucide-react';
-import { sessionService, SessionDetails } from '@/services/sessionService';
+import { sessionService, SessionDetails, getParticipantName } from '@/services/sessionService';
+import { SessionSummaryModal, SessionSummaryData } from '@/components/session/SessionSummaryModal';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://mindcarex-backend.onrender.com';
 const WS_URL = API_BASE.replace(/^http/, 'ws') + '/ws';
@@ -27,17 +28,19 @@ export default function ChatSession() {
   const [messageText, setMessageText] = useState('');
   const [isConnected, setIsConnected] = useState(false);
   const [sessionDetails, setSessionDetails] = useState<SessionDetails | null>(null);
+  const [showSummaryModal, setShowSummaryModal] = useState(false);
+  const [endingSession, setEndingSession] = useState(false);
 
   const remoteName = sessionDetails
     ? userRole === 'DOCTOR'
-      ? sessionDetails.appointment.patient.fullName
-      : sessionDetails.appointment.doctor.fullName
+      ? getParticipantName(sessionDetails.appointment.patient)
+      : getParticipantName(sessionDetails.appointment.doctor)
     : 'Participant';
 
   const localName = sessionDetails
     ? userRole === 'DOCTOR'
-      ? sessionDetails.appointment.doctor.fullName
-      : sessionDetails.appointment.patient.fullName
+      ? getParticipantName(sessionDetails.appointment.doctor)
+      : getParticipantName(sessionDetails.appointment.patient)
     : userName;
 
   // Auto-scroll chat
@@ -105,12 +108,18 @@ export default function ChatSession() {
     stompClientRef.current?.deactivate();
   };
 
-  const handleEndSession = async () => {
+  const handleEndSession = async (summaryData?: SessionSummaryData) => {
+    setEndingSession(true);
     if (userRole === 'DOCTOR') {
       try {
+        const body = summaryData?.aiSummary ? summaryData : undefined;
         await fetch(`${API_BASE}/api/sessions/${sessionId}/end`, {
           method: 'POST',
-          headers: { Authorization: `Bearer ${token}` },
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: body ? JSON.stringify(body) : undefined,
         });
       } catch (e) {
         console.log('Could not end session:', e);
@@ -118,6 +127,14 @@ export default function ChatSession() {
     }
     cleanup();
     navigate('/dashboard');
+  };
+
+  const handleEndClick = () => {
+    if (userRole === 'DOCTOR') {
+      setShowSummaryModal(true);
+    } else {
+      handleEndSession();
+    }
   };
 
   return (
@@ -132,7 +149,7 @@ export default function ChatSession() {
             <span className="hidden sm:inline">{isConnected ? 'Connected' : 'Disconnected'}</span>
           </span>
         </div>
-        <Button variant="destructive" size="sm" className="shrink-0 text-xs sm:text-sm" onClick={handleEndSession}>
+        <Button variant="destructive" size="sm" className="shrink-0 text-xs sm:text-sm" onClick={handleEndClick}>
           <PhoneOff className="mr-1 h-3.5 w-3.5 sm:h-4 sm:w-4" />
           <span className="hidden sm:inline">{userRole === 'DOCTOR' ? 'End Session' : 'Leave'}</span>
           <span className="sm:hidden">End</span>
@@ -208,7 +225,7 @@ export default function ChatSession() {
                 <div className={`max-w-[85%] sm:max-w-[70%] rounded-xl px-3 py-2 ${msg.senderId === userId ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'}`}>
                   {msg.senderId !== userId && (
                     <p className="mb-0.5 text-[10px] font-medium opacity-70">
-                      {msg.senderName || msg.senderRole}
+                      {remoteName}
                     </p>
                   )}
                   <p className="text-xs sm:text-sm break-words">{msg.message}</p>
@@ -242,6 +259,14 @@ export default function ChatSession() {
           </div>
         </div>
       </div>
+
+      {/* Session Summary Modal for Doctors */}
+      <SessionSummaryModal
+        open={showSummaryModal}
+        onClose={() => setShowSummaryModal(false)}
+        onSubmit={(data) => handleEndSession(data)}
+        loading={endingSession}
+      />
     </div>
   );
 }

@@ -29,6 +29,7 @@ import AdminDashboard from "./pages/admin/AdminDashboard";
 import VideoSession from "./pages/VideoSession";
 import ChatSession from "./pages/ChatSession";
 import Settings from "./pages/Settings";
+import Profile from "./pages/Profile";
 
 // Analysis & Notification Pages
 import ChatAnalysis from "./pages/analysis/ChatAnalysis";
@@ -200,6 +201,14 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <Settings />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/profile"
+                element={
+                  <ProtectedRoute>
+                    <Profile />
                   </ProtectedRoute>
                 }
               />

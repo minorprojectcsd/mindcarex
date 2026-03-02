@@ -9,13 +9,21 @@ export interface SessionDetails {
   id: string;
   appointment: {
     id: string;
-    doctor: { id: string; fullName: string };
-    patient: { id: string; fullName: string };
+    doctor: { id: string; fullName: string; user?: { fullName: string } };
+    patient: { id: string; fullName: string; user?: { fullName: string } };
   };
   status: string;
   startedAt: string | null;
   endedAt: string | null;
   summary: string | null;
+}
+
+/** Helper to extract display name from session participant */
+export function getParticipantName(
+  participant: { fullName: string; user?: { fullName: string } } | undefined
+): string {
+  if (!participant) return 'Participant';
+  return participant.user?.fullName || participant.fullName || 'Participant';
 }
 
 export interface ChatMessage {

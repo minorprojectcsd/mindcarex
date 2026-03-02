@@ -61,7 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const authUser: AuthUser = {
         id: response.userId || `user-${Date.now()}`,
         email: response.email || email,
-        name: response.name || email.split('@')[0],
+        name: response.fullName || response.name || email.split('@')[0],
         role: response.role,
         created_at: new Date().toISOString(),
       };

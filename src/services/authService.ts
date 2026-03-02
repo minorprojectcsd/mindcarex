@@ -11,6 +11,7 @@ export interface RegisterRequest {
   password: string;
   role: UserRole;
   fullName: string;
+  [key: string]: any; // Allow additional profile fields
 }
 
 export interface AuthResponse {
@@ -19,6 +20,7 @@ export interface AuthResponse {
   userId?: string;
   email?: string;
   name?: string;
+  fullName?: string;
 }
 
 export const authService = {

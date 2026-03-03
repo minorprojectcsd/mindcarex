@@ -1,7 +1,9 @@
+import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { Calendar, ArrowLeft, Video, XCircle, Mail } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -26,6 +28,7 @@ import {
 export default function MyAppointments() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
 
   const joinSessionMutation = useMutation({
@@ -42,10 +45,12 @@ export default function MyAppointments() {
     },
   });
 
-  const { data: appointments, isLoading } = useQuery({
+  const { data: appointments, isLoading, error } = useQuery({
     queryKey: ['my-appointments'],
     queryFn: appointmentService.getMyAppointments,
+    enabled: user?.role === 'PATIENT',
     refetchInterval: 10000,
+    retry: (failureCount, err: any) => (err?.response?.status === 403 ? false : failureCount < 2),
   });
 
   const cancelMutation = useMutation({
@@ -58,6 +63,21 @@ export default function MyAppointments() {
       toast({ title: 'Failed', description: 'Could not cancel appointment.', variant: 'destructive' });
     },
   });
+
+  useEffect(() => {
+    if ((error as any)?.response?.status === 403) {
+      toast({
+        title: 'Access denied',
+        description: 'Your session role does not match this page. Please sign in again.',
+        variant: 'destructive',
+      });
+      localStorage.removeItem('token');
+      localStorage.removeItem('role');
+      localStorage.removeItem('userId');
+      localStorage.removeItem('mindcarex_auth_user');
+      navigate('/login', { replace: true });
+    }
+  }, [error, navigate, toast]);
 
   const scheduled = appointments?.filter(a => ['BOOKED', 'SCHEDULED'].includes(a.status)) || [];
   const inProgress = appointments?.filter(a => a.status === 'IN_PROGRESS') || [];

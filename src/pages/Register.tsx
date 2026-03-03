@@ -20,6 +20,7 @@ const RELATIONSHIPS = ['Parent', 'Spouse', 'Sibling', 'Child', 'Friend', 'Other'
 export default function Register() {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { setUser } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [step, setStep] = useState(1);
 
@@ -85,8 +86,10 @@ export default function Register() {
         });
       } else {
         Object.assign(body, {
-          phoneNumber, dateOfBirth: dateOfBirth || null,
-          gender, address: address || null,
+          phoneNumber,
+          dateOfBirth: dateOfBirth || null,
+          gender: gender ? gender.toUpperCase() : null,
+          address: address || null,
           medicalHistory: medicalHistory || null,
           bloodGroup: bloodGroup || null,
           allergies: allergies || null,
@@ -95,6 +98,8 @@ export default function Register() {
           emergencyContactPhone: emergencyContactPhone || null,
           emergencyContactEmail: emergencyContactEmail || null,
           emergencyContactRelation: emergencyContactRelation || null,
+          emergencyContactRelationship: emergencyContactRelation || null,
+          relationship: emergencyContactRelation || null,
         });
       }
 
@@ -103,19 +108,23 @@ export default function Register() {
 
       // Backend returns token on registration — auto-login
       if (data.token) {
-        localStorage.setItem('token', data.token);
-        localStorage.setItem('role', data.role);
-        if (data.userId) localStorage.setItem('userId', data.userId);
-        localStorage.setItem('mindcarex_auth_user', JSON.stringify({
-          id: data.userId,
-          email: data.email,
-          name: data.fullName,
-          role: data.role,
+        const userRole = data.role || role;
+        const authUser = {
+          id: data.userId || `user-${Date.now()}`,
+          email: data.email || email,
+          name: data.fullName || name,
+          role: userRole,
           created_at: new Date().toISOString(),
-        }));
+        };
+
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('role', userRole);
+        if (data.userId) localStorage.setItem('userId', data.userId);
+        localStorage.setItem('mindcarex_auth_user', JSON.stringify(authUser));
+        setUser(authUser as any);
+
         toast({ title: 'Welcome!', description: 'Your account has been created successfully.' });
-        // Navigate based on role
-        if (data.role === 'DOCTOR') {
+        if (userRole === 'DOCTOR') {
           navigate('/doctor/dashboard');
         } else {
           navigate('/patient/dashboard');

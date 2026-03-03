@@ -98,9 +98,32 @@ export default function Register() {
         });
       }
 
-      await api.post('/api/auth/register', body);
-      toast({ title: 'Account created', description: 'Please login with your credentials.' });
-      navigate('/login');
+      const response = await api.post('/api/auth/register', body);
+      const data = response.data;
+
+      // Backend returns token on registration — auto-login
+      if (data.token) {
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('role', data.role);
+        if (data.userId) localStorage.setItem('userId', data.userId);
+        localStorage.setItem('mindcarex_auth_user', JSON.stringify({
+          id: data.userId,
+          email: data.email,
+          name: data.fullName,
+          role: data.role,
+          created_at: new Date().toISOString(),
+        }));
+        toast({ title: 'Welcome!', description: 'Your account has been created successfully.' });
+        // Navigate based on role
+        if (data.role === 'DOCTOR') {
+          navigate('/doctor/dashboard');
+        } else {
+          navigate('/patient/dashboard');
+        }
+      } else {
+        toast({ title: 'Account created', description: 'Please login with your credentials.' });
+        navigate('/login');
+      }
     } catch (error: any) {
       const message = error?.response?.data?.message || error?.response?.data || 'Registration failed.';
       toast({ title: 'Registration failed', description: String(message), variant: 'destructive' });

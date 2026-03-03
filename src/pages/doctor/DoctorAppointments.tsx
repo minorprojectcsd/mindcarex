@@ -72,7 +72,7 @@ export default function DoctorAppointments() {
     return (
       <div className="flex items-center justify-between rounded-lg border p-4">
         <div>
-          <p className="font-medium">{appointment.patient?.fullName || 'Patient'}</p>
+          <p className="font-medium">{appointment.patient?.fullName || appointment.patient?.name || 'Patient'}</p>
           <p className="text-sm text-muted-foreground">
             {format(new Date(appointment.startTime), 'EEEE, MMMM d, yyyy · h:mm a')}
             {appointment.endTime && (
@@ -117,7 +117,7 @@ export default function DoctorAppointments() {
                   <AlertDialogHeader>
                     <AlertDialogTitle>Cancel Appointment?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      This will cancel the appointment with {appointment.patient?.fullName}. This action cannot be undone.
+                      This will cancel the appointment with {appointment.patient?.fullName || appointment.patient?.name}. This action cannot be undone.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>

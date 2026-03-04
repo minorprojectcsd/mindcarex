@@ -1,56 +1,56 @@
-import api from '@/lib/api';
+/**
+ * Voice Stress Analysis service — Flask backend.
+ * Sends audio chunks (multipart) and retrieves stress timelines.
+ */
+import analysisApi, { unwrap } from '@/lib/analysisApi';
 import type {
-  VoiceAnalysisResult,
-  VoiceAnalysisFrame,
-  StressTimeline,
+  VoiceChunkResult,
+  VoiceStressTimeline,
+  VoiceStressDistribution,
 } from '@/types/analysis';
 
 const BASE = '/api/analysis/voice';
 
 export const voiceAnalysisService = {
-  /** Send audio chunk (base64) for real-time analysis */
-  async analyzeAudioChunk(sessionId: string, audioData: string, userId: string): Promise<VoiceAnalysisFrame> {
-    const res = await api.post<VoiceAnalysisFrame>(`${BASE}/${sessionId}/chunk`, {
-      audioData,
-      userId,
-    });
-    return res.data;
+  /** Start a voice analysis stream */
+  async startStream(patientId?: string): Promise<{ session_id: string; stream_active: boolean }> {
+    return unwrap(analysisApi.post(`${BASE}/stream/start`, { patient_id: patientId }));
   },
 
-  /** Get full voice analysis for a session */
-  async getSessionVoiceAnalysis(sessionId: string, userId?: string): Promise<VoiceAnalysisResult> {
-    const params = userId ? { userId } : {};
-    const res = await api.get<VoiceAnalysisResult>(`${BASE}/${sessionId}`, { params });
-    return res.data;
+  /** Send an audio chunk (5–30s clip) as multipart */
+  async sendAudioChunk(sessionId: string, audioFile: File | Blob): Promise<VoiceChunkResult> {
+    const form = new FormData();
+    form.append('audio', audioFile);
+    return unwrap<VoiceChunkResult>(
+      analysisApi.post(`${BASE}/${sessionId}/chunk`, form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+    );
   },
 
-  /** Get stress timeline for a session */
-  async getStressTimeline(sessionId: string): Promise<StressTimeline> {
-    const res = await api.get<StressTimeline>(`${BASE}/${sessionId}/stress-timeline`);
-    return res.data;
+  /** Get full session voice analysis */
+  async getSessionAnalysis(sessionId: string) {
+    return unwrap(analysisApi.get(`${BASE}/${sessionId}`));
   },
 
-  /** Get voice emotion distribution */
-  async getVoiceEmotionDistribution(sessionId: string): Promise<Record<string, number>> {
-    const res = await api.get<Record<string, number>>(`${BASE}/${sessionId}/distribution`);
-    return res.data;
+  /** Get stress timeline for line chart */
+  async getStressTimeline(sessionId: string): Promise<VoiceStressTimeline> {
+    return unwrap<VoiceStressTimeline>(analysisApi.get(`${BASE}/${sessionId}/stress-timeline`));
   },
 
-  /** Get patient voice analysis history */
-  async getPatientVoiceHistory(patientId: string): Promise<VoiceAnalysisResult[]> {
-    const res = await api.get<VoiceAnalysisResult[]>(`${BASE}/patient/${patientId}/history`);
-    return res.data;
+  /** Get stress distribution */
+  async getStressDistribution(sessionId: string): Promise<VoiceStressDistribution> {
+    return unwrap<VoiceStressDistribution>(analysisApi.get(`${BASE}/${sessionId}/distribution`));
   },
 
-  /** Start real-time voice analysis stream */
-  async startRealtimeStream(sessionId: string): Promise<{ wsTopic: string }> {
-    const res = await api.post<{ wsTopic: string }>(`${BASE}/${sessionId}/stream/start`);
-    return res.data;
+  /** Get patient voice history */
+  async getPatientVoiceHistory(patientId: string) {
+    return unwrap(analysisApi.get(`${BASE}/patient/${patientId}/history`));
   },
 
-  /** Stop real-time voice analysis stream */
-  async stopRealtimeStream(sessionId: string): Promise<void> {
-    await api.post(`${BASE}/${sessionId}/stream/stop`);
+  /** Stop voice analysis stream */
+  async stopStream(sessionId: string): Promise<void> {
+    await unwrap(analysisApi.post(`${BASE}/stream/stop`, { session_id: sessionId }));
   },
 };
 

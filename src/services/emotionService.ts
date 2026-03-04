@@ -1,56 +1,51 @@
-import api from '@/lib/api';
-import type {
-  EmotionAnalysisResult,
-  EmotionFrame,
-  PatientEmotionHistory,
-} from '@/types/analysis';
+/**
+ * REST fallback for Emotion Analysis (when WebSocket is unavailable).
+ * Uses the Flask analysis backend.
+ */
+import analysisApi, { unwrap } from '@/lib/analysisApi';
+import type { EmotionSessionSummary } from '@/types/analysis';
 
 const BASE = '/api/analysis/emotion';
 
 export const emotionService = {
-  /** Send a video frame (base64) for emotion detection */
-  async analyzeFrame(sessionId: string, frameData: string, userId: string): Promise<EmotionFrame> {
-    const res = await api.post<EmotionFrame>(`${BASE}/${sessionId}/frame`, {
-      frameData,
-      userId,
-    });
-    return res.data;
+  /** Start a new emotion stream session */
+  async startStream(patientId?: string): Promise<{ session_id: string }> {
+    return unwrap(analysisApi.post(`${BASE}/stream/start`, { patient_id: patientId }));
   },
 
-  /** Get full emotion analysis for a session */
-  async getSessionEmotions(sessionId: string, userId?: string): Promise<EmotionAnalysisResult> {
-    const params = userId ? { userId } : {};
-    const res = await api.get<EmotionAnalysisResult>(`${BASE}/${sessionId}`, { params });
-    return res.data;
+  /** Send a single frame (base64 or multipart) */
+  async analyzeFrame(sessionId: string, imageBase64: string) {
+    return unwrap(analysisApi.post(`${BASE}/${sessionId}/frame`, { image_base64: imageBase64 }));
   },
 
-  /** Get emotion distribution for a session */
+  /** Get live snapshot (latest frame + running totals) */
+  async getLiveSnapshot(sessionId: string) {
+    return unwrap(analysisApi.get(`${BASE}/${sessionId}/live-snapshot`));
+  },
+
+  /** Get full session analysis */
+  async getSessionEmotions(sessionId: string) {
+    return unwrap(analysisApi.get(`${BASE}/${sessionId}`));
+  },
+
+  /** Get emotion distribution */
   async getEmotionDistribution(sessionId: string): Promise<Record<string, number>> {
-    const res = await api.get<Record<string, number>>(`${BASE}/${sessionId}/distribution`);
-    return res.data;
+    return unwrap<Record<string, number>>(analysisApi.get(`${BASE}/${sessionId}/distribution`));
   },
 
-  /** Get patient emotion history across sessions */
-  async getPatientEmotionHistory(patientId: string): Promise<PatientEmotionHistory> {
-    const res = await api.get<PatientEmotionHistory>(`${BASE}/patient/${patientId}/history`);
-    return res.data;
+  /** Get average score */
+  async getAverageScore(sessionId: string) {
+    return unwrap(analysisApi.get(`${BASE}/${sessionId}/average`));
   },
 
-  /** Get average emotion score for a session */
-  async getAverageScore(sessionId: string): Promise<{ averageScore: number; dominantEmotion: string }> {
-    const res = await api.get<{ averageScore: number; dominantEmotion: string }>(`${BASE}/${sessionId}/average`);
-    return res.data;
+  /** Get patient emotion history */
+  async getPatientEmotionHistory(patientId: string) {
+    return unwrap(analysisApi.get(`${BASE}/patient/${patientId}/history`));
   },
 
-  /** Start real-time emotion streaming (returns WebSocket topic) */
-  async startRealtimeStream(sessionId: string): Promise<{ wsTopic: string }> {
-    const res = await api.post<{ wsTopic: string }>(`${BASE}/${sessionId}/stream/start`);
-    return res.data;
-  },
-
-  /** Stop real-time emotion streaming */
-  async stopRealtimeStream(sessionId: string): Promise<void> {
-    await api.post(`${BASE}/${sessionId}/stream/stop`);
+  /** Stop emotion stream */
+  async stopStream(sessionId: string): Promise<void> {
+    await unwrap(analysisApi.post(`${BASE}/stream/stop`, { session_id: sessionId }));
   },
 };
 

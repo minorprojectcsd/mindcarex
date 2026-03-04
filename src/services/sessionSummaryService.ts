@@ -1,59 +1,63 @@
-import api from '@/lib/api';
-import type {
-  TranscriptionResult,
-  SessionSummary,
-  SessionReport,
-} from '@/types/analysis';
+/**
+ * Session Summary AI service — Flask backend.
+ * Handles transcription (Groq Whisper) and AI summary (LLaMA3).
+ */
+import analysisApi, { unwrap, ANALYSIS_BASE } from '@/lib/analysisApi';
+import type { TranscriptionResult, SessionSummary } from '@/types/analysis';
 
 const BASE = '/api/analysis/summary';
 
 export const sessionSummaryService = {
-  /** Generate transcription from session audio */
-  async generateTranscription(sessionId: string): Promise<TranscriptionResult> {
-    const res = await api.post<TranscriptionResult>(`${BASE}/${sessionId}/transcribe`);
-    return res.data;
+  /** Create a new summary session */
+  async createSession(patientId?: string): Promise<{ session_id: string; status: string }> {
+    return unwrap(analysisApi.post(`${BASE}/session/new`, { patient_id: patientId }));
   },
 
-  /** Get existing transcription */
+  /** Upload audio for transcription (Groq Whisper) */
+  async transcribe(sessionId: string, audioFile: File | Blob, language?: string): Promise<TranscriptionResult> {
+    const form = new FormData();
+    form.append('audio', audioFile);
+    if (language) form.append('language', language);
+    return unwrap<TranscriptionResult>(
+      analysisApi.post(`${BASE}/${sessionId}/transcribe`, form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+    );
+  },
+
+  /** Get stored transcription */
   async getTranscription(sessionId: string): Promise<TranscriptionResult> {
-    const res = await api.get<TranscriptionResult>(`${BASE}/${sessionId}/transcription`);
-    return res.data;
+    return unwrap<TranscriptionResult>(analysisApi.get(`${BASE}/${sessionId}/transcription`));
   },
 
-  /** Generate AI-powered session summary */
+  /** Generate AI summary from transcript */
   async generateSummary(sessionId: string): Promise<SessionSummary> {
-    const res = await api.post<SessionSummary>(`${BASE}/${sessionId}/generate`);
-    return res.data;
+    return unwrap<SessionSummary>(analysisApi.post(`${BASE}/${sessionId}/generate`));
   },
 
-  /** Get existing session summary */
+  /** Get stored summary */
   async getSummary(sessionId: string): Promise<SessionSummary> {
-    const res = await api.get<SessionSummary>(`${BASE}/${sessionId}`);
-    return res.data;
+    return unwrap<SessionSummary>(analysisApi.get(`${BASE}/${sessionId}`));
   },
 
-  /** Get full session report (combines all analyses) */
-  async getFullReport(sessionId: string): Promise<SessionReport> {
-    const res = await api.get<SessionReport>(`${BASE}/${sessionId}/report`);
-    return res.data;
+  /** Get full report (summary + transcript preview + metadata) */
+  async getFullReport(sessionId: string) {
+    return unwrap(analysisApi.get(`${BASE}/${sessionId}/report`));
   },
 
-  /** Get patient session reports history */
-  async getPatientReports(patientId: string): Promise<SessionReport[]> {
-    const res = await api.get<SessionReport[]>(`${BASE}/patient/${patientId}/reports`);
-    return res.data;
+  /** Download report as PDF — opens in new tab */
+  downloadReportPDF(sessionId: string) {
+    window.open(`${ANALYSIS_BASE}${BASE}/${sessionId}/report/pdf`, '_blank');
   },
 
-  /** Download report as PDF */
-  async downloadReportPDF(sessionId: string): Promise<Blob> {
-    const res = await api.get(`${BASE}/${sessionId}/report/pdf`, { responseType: 'blob' });
-    return res.data;
-  },
-
-  /** Update/edit summary (doctor only) */
+  /** Edit/correct summary fields (doctor only) */
   async updateSummary(sessionId: string, updates: Partial<SessionSummary>): Promise<SessionSummary> {
-    const res = await api.put<SessionSummary>(`${BASE}/${sessionId}`, updates);
-    return res.data;
+    return unwrap<SessionSummary>(analysisApi.put(`${BASE}/${sessionId}`, updates));
+  },
+
+  /** Get all reports for a patient */
+  async getPatientReports(patientId: string) {
+    return unwrap(analysisApi.get(`${BASE}/patient/${patientId}/reports`));
   },
 };
 

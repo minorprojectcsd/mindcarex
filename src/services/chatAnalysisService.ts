@@ -1,44 +1,59 @@
-import api from '@/lib/api';
+import analysisApi, { unwrap } from '@/lib/analysisApi';
 import type {
-  ChatAnalysisRequest,
-  ChatAnalysisResult,
-  SentimentTimeline,
+  ChatAnalysisUploadResult,
+  ChatSentimentTimeline,
+  ChatRealtimeResult,
+  ChatRiskResult,
 } from '@/types/analysis';
 
 const BASE = '/api/analysis/chat';
 
 export const chatAnalysisService = {
-  /** Analyze chat messages for a session */
-  async analyzeChat(request: ChatAnalysisRequest): Promise<ChatAnalysisResult> {
-    const res = await api.post<ChatAnalysisResult>(`${BASE}/analyze`, request);
-    return res.data;
+  /** Upload WhatsApp .txt export and get full analysis */
+  async analyzeChat(file: File, user?: string): Promise<ChatAnalysisUploadResult> {
+    const form = new FormData();
+    form.append('file', file);
+    if (user) form.append('user', user);
+    return unwrap<ChatAnalysisUploadResult>(
+      analysisApi.post(`${BASE}/analyze`, form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      })
+    );
   },
 
   /** Get cached analysis result for a session */
-  async getAnalysis(sessionId: string): Promise<ChatAnalysisResult> {
-    const res = await api.get<ChatAnalysisResult>(`${BASE}/${sessionId}`);
-    return res.data;
+  async getAnalysis(sessionId: string): Promise<ChatAnalysisUploadResult> {
+    return unwrap<ChatAnalysisUploadResult>(analysisApi.get(`${BASE}/${sessionId}`));
   },
 
-  /** Get real-time sentiment timeline */
-  async getSentimentTimeline(sessionId: string): Promise<SentimentTimeline> {
-    const res = await api.get<SentimentTimeline>(`${BASE}/${sessionId}/sentiment-timeline`);
-    return res.data;
+  /** Get sentiment timeline for line chart */
+  async getSentimentTimeline(sessionId: string): Promise<ChatSentimentTimeline> {
+    return unwrap<ChatSentimentTimeline>(analysisApi.get(`${BASE}/${sessionId}/sentiment-timeline`));
   },
 
-  /** Trigger real-time sentiment analysis for a single message */
-  async analyzeSingleMessage(sessionId: string, message: string, senderId: string): Promise<{ score: number; label: string }> {
-    const res = await api.post<{ score: number; label: string }>(`${BASE}/${sessionId}/realtime`, {
-      message,
-      senderId,
-    });
-    return res.data;
+  /** Quick stats only */
+  async getStats(sessionId: string) {
+    return unwrap(analysisApi.get(`${BASE}/${sessionId}/stats`));
   },
 
-  /** Get analysis history for a patient across sessions */
-  async getPatientChatHistory(patientId: string): Promise<ChatAnalysisResult[]> {
-    const res = await api.get<ChatAnalysisResult[]>(`${BASE}/patient/${patientId}/history`);
-    return res.data;
+  /** Risk flags only */
+  async getRisk(sessionId: string): Promise<ChatRiskResult> {
+    return unwrap<ChatRiskResult>(analysisApi.get(`${BASE}/${sessionId}/risk`));
+  },
+
+  /** Get participants list */
+  async getParticipants(sessionId: string): Promise<{ participants: string[] }> {
+    return unwrap<{ participants: string[] }>(analysisApi.get(`${BASE}/${sessionId}/participants`));
+  },
+
+  /** Real-time sentiment on a single typed message */
+  async analyzeRealtimeMessage(message: string): Promise<ChatRealtimeResult> {
+    return unwrap<ChatRealtimeResult>(analysisApi.post(`${BASE}/realtime`, { message }));
+  },
+
+  /** Get analysis history for a patient */
+  async getPatientChatHistory(patientId: string) {
+    return unwrap(analysisApi.get(`${BASE}/patient/${patientId}/history`));
   },
 };
 

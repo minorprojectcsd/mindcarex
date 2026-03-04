@@ -1,36 +1,110 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Eye, Activity, History, BarChart3, Loader2 } from 'lucide-react';
-import type { EmotionAnalysisResult, FacialEmotion } from '@/types/analysis';
+import { Eye, Activity, History, BarChart3 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import emotionStreamService from '@/services/emotionStreamService';
+import type { FacialEmotion, EmotionFrameResult, EmotionSessionSummary } from '@/types/analysis';
 
 const EMOTION_COLORS: Record<FacialEmotion, string> = {
   happy: 'bg-green-500/20 text-green-700 dark:text-green-400',
   sad: 'bg-blue-500/20 text-blue-700 dark:text-blue-400',
   angry: 'bg-red-500/20 text-red-700 dark:text-red-400',
-  surprised: 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400',
-  fearful: 'bg-purple-500/20 text-purple-700 dark:text-purple-400',
-  disgusted: 'bg-orange-500/20 text-orange-700 dark:text-orange-400',
+  surprise: 'bg-yellow-500/20 text-yellow-700 dark:text-yellow-400',
+  fear: 'bg-purple-500/20 text-purple-700 dark:text-purple-400',
+  disgust: 'bg-orange-500/20 text-orange-700 dark:text-orange-400',
   neutral: 'bg-muted text-muted-foreground',
-  contempt: 'bg-pink-500/20 text-pink-700 dark:text-pink-400',
 };
 
 const EMOTION_EMOJIS: Record<FacialEmotion, string> = {
-  happy: '😊', sad: '😢', angry: '😠', surprised: '😲',
-  fearful: '😨', disgusted: '🤢', neutral: '😐', contempt: '😏',
+  happy: '😊', sad: '😢', angry: '😠', surprise: '😲',
+  fear: '😨', disgust: '🤢', neutral: '😐',
 };
+
+const ALL_EMOTIONS: FacialEmotion[] = ['happy', 'sad', 'angry', 'surprise', 'fear', 'disgust', 'neutral'];
 
 export default function EmotionAnalysis() {
   const { sessionId } = useParams();
-  const [analysis, setAnalysis] = useState<EmotionAnalysisResult | null>(null);
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval>>();
 
-  const allEmotions: FacialEmotion[] = ['happy', 'sad', 'angry', 'surprised', 'fearful', 'disgusted', 'neutral', 'contempt'];
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [liveSessionId, setLiveSessionId] = useState<string | null>(null);
+  const [latestFrame, setLatestFrame] = useState<EmotionFrameResult | null>(null);
+  const [summary, setSummary] = useState<EmotionSessionSummary | null>(null);
+
+  const handleResult = useCallback((data: EmotionFrameResult) => {
+    setLatestFrame(data);
+  }, []);
+
+  const startStream = async () => {
+    try {
+      // Start webcam
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+      }
+
+      emotionStreamService.connect();
+      emotionStreamService.onEmotionResult(handleResult);
+
+      emotionStreamService.startSession(undefined, (sid) => {
+        setLiveSessionId(sid);
+        setIsStreaming(true);
+
+        // Send frames every 200ms
+        intervalRef.current = setInterval(() => {
+          if (!videoRef.current || !canvasRef.current) return;
+          const ctx = canvasRef.current.getContext('2d');
+          if (!ctx) return;
+          canvasRef.current.width = videoRef.current.videoWidth;
+          canvasRef.current.height = videoRef.current.videoHeight;
+          ctx.drawImage(videoRef.current, 0, 0);
+          const base64 = canvasRef.current.toDataURL('image/jpeg', 0.7);
+          emotionStreamService.sendFrame(sid, base64);
+        }, 200);
+      });
+    } catch (err: any) {
+      toast({ title: 'Camera error', description: err.message, variant: 'destructive' });
+    }
+  };
+
+  const stopStream = () => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+
+    if (liveSessionId) {
+      emotionStreamService.stopSession(liveSessionId, (data) => {
+        setSummary(data);
+        toast({ title: 'Session complete', description: `Analyzed ${data.total_frames} frames` });
+      });
+    }
+
+    // Stop webcam
+    if (videoRef.current?.srcObject) {
+      (videoRef.current.srcObject as MediaStream).getTracks().forEach(t => t.stop());
+      videoRef.current.srcObject = null;
+    }
+
+    emotionStreamService.offEmotionResult(handleResult);
+    setIsStreaming(false);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      emotionStreamService.disconnect();
+    };
+  }, []);
+
+  const distribution = summary?.distribution ?? latestFrame?.live_summary?.distribution;
+  const dominantEmotion = latestFrame?.dominant_emotion;
 
   return (
     <DashboardLayout>
@@ -39,20 +113,20 @@ export default function EmotionAnalysis() {
           <div>
             <h1 className="text-xl font-bold md:text-2xl">Emotion Recognition</h1>
             <p className="text-sm text-muted-foreground">
-              {sessionId ? `Session: ${sessionId}` : 'Facial emotion detection & analysis'}
+              {liveSessionId ? `Live Session: ${liveSessionId.slice(0, 8)}…` : 'Real-time facial emotion detection'}
             </p>
           </div>
-          <div className="flex gap-2">
-            <Button
-              variant={isStreaming ? 'destructive' : 'default'}
-              disabled={loading || !sessionId}
-              onClick={() => setIsStreaming(!isStreaming)}
-              className="flex-1 sm:flex-none"
-            >
-              {isStreaming ? 'Stop Stream' : 'Start Live'}
-            </Button>
-          </div>
+          <Button
+            variant={isStreaming ? 'destructive' : 'default'}
+            onClick={isStreaming ? stopStream : startStream}
+            className="w-full sm:w-auto"
+          >
+            {isStreaming ? 'Stop Stream' : 'Start Live'}
+          </Button>
         </div>
+
+        {/* Hidden canvas for frame capture */}
+        <canvas ref={canvasRef} className="hidden" />
 
         <Tabs defaultValue="realtime" className="w-full">
           <TabsList className="w-full grid grid-cols-3">
@@ -77,12 +151,24 @@ export default function EmotionAnalysis() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="aspect-video rounded-lg bg-muted/50 flex items-center justify-center">
-                    <div className="text-center">
-                      <Eye className="mx-auto mb-3 h-12 w-12 text-muted-foreground/40" />
-                      <p className="text-sm text-muted-foreground">Video emotion overlay renders here</p>
-                      <p className="text-xs text-muted-foreground/60">Connect Python backend to enable</p>
-                    </div>
+                  <div className="aspect-video rounded-lg bg-muted/50 flex items-center justify-center overflow-hidden relative">
+                    <video ref={videoRef} className="w-full h-full object-cover" muted playsInline />
+                    {!isStreaming && !videoRef.current?.srcObject && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="text-center">
+                          <Eye className="mx-auto mb-3 h-12 w-12 text-muted-foreground/40" />
+                          <p className="text-sm text-muted-foreground">Click "Start Live" to begin</p>
+                        </div>
+                      </div>
+                    )}
+                    {/* Emotion overlay */}
+                    {isStreaming && latestFrame?.face_detected && dominantEmotion && (
+                      <div className="absolute top-2 left-2 bg-background/80 rounded-lg px-3 py-2 backdrop-blur-sm">
+                        <span className="text-lg mr-1">{EMOTION_EMOJIS[dominantEmotion]}</span>
+                        <span className="capitalize font-medium">{dominantEmotion}</span>
+                        <span className="text-xs text-muted-foreground ml-2">{latestFrame.dominant_score}%</span>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -91,10 +177,10 @@ export default function EmotionAnalysis() {
                 <CardHeader className="pb-2">
                   <CardDescription>Dominant Emotion</CardDescription>
                   <CardTitle className="text-3xl">
-                    {analysis ? (
+                    {dominantEmotion ? (
                       <span className="flex items-center gap-2">
-                        {EMOTION_EMOJIS[analysis.dominantEmotion]}
-                        <span className="capitalize">{analysis.dominantEmotion}</span>
+                        {EMOTION_EMOJIS[dominantEmotion]}
+                        <span className="capitalize">{dominantEmotion}</span>
                       </span>
                     ) : '—'}
                   </CardTitle>
@@ -105,7 +191,7 @@ export default function EmotionAnalysis() {
                 <CardHeader className="pb-2">
                   <CardDescription>Confidence</CardDescription>
                   <CardTitle className="text-3xl">
-                    {analysis ? `${(analysis.averageConfidence * 100).toFixed(0)}%` : '—'}
+                    {latestFrame?.face_detected ? `${latestFrame.dominant_score}%` : '—'}
                   </CardTitle>
                 </CardHeader>
               </Card>
@@ -123,8 +209,8 @@ export default function EmotionAnalysis() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {allEmotions.map((emotion) => {
-                    const value = analysis?.emotionDistribution[emotion] ?? 0;
+                  {ALL_EMOTIONS.map((emotion) => {
+                    const value = distribution?.[emotion] ?? 0;
                     return (
                       <div key={emotion} className="space-y-1">
                         <div className="flex items-center justify-between text-sm">
@@ -132,12 +218,12 @@ export default function EmotionAnalysis() {
                             <span>{EMOTION_EMOJIS[emotion]}</span>
                             <span className="capitalize">{emotion}</span>
                           </span>
-                          <span className="text-muted-foreground">{(value * 100).toFixed(0)}%</span>
+                          <span className="text-muted-foreground">{value.toFixed(0)}%</span>
                         </div>
                         <div className="h-2 rounded-full bg-muted">
                           <div
                             className={`h-full rounded-full transition-all ${EMOTION_COLORS[emotion].split(' ')[0]}`}
-                            style={{ width: `${value * 100}%` }}
+                            style={{ width: `${Math.min(value, 100)}%` }}
                           />
                         </div>
                       </div>
@@ -153,18 +239,30 @@ export default function EmotionAnalysis() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <History className="h-5 w-5" />
-                  Patient Emotional Timeline
+                  Session Emotion Timeline
                 </CardTitle>
-                <CardDescription>Emotion trends across past sessions</CardDescription>
+                <CardDescription>
+                  {summary ? `${summary.total_frames} frames analyzed in ${summary.duration_seconds?.toFixed(0)}s` : 'Data populates after session ends'}
+                </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="h-64 rounded-lg bg-muted/50 flex items-center justify-center">
-                  <div className="text-center">
-                    <Activity className="mx-auto mb-3 h-10 w-10 text-muted-foreground/40" />
-                    <p className="text-sm text-muted-foreground">Patient timeline chart renders here</p>
-                    <p className="text-xs text-muted-foreground/60">Data populates after sessions are analyzed</p>
+                {summary?.timeline && summary.timeline.length > 0 ? (
+                  <div className="space-y-1 max-h-64 overflow-y-auto">
+                    {summary.timeline.map((pt, i) => (
+                      <div key={i} className="flex justify-between text-xs border-b py-1">
+                        <span className="text-muted-foreground">Frame {pt.frame_index}</span>
+                        <span className="capitalize">{pt.dominant_emotion} ({pt.dominant_score}%)</span>
+                      </div>
+                    ))}
                   </div>
-                </div>
+                ) : (
+                  <div className="h-64 rounded-lg bg-muted/50 flex items-center justify-center">
+                    <div className="text-center">
+                      <Activity className="mx-auto mb-3 h-10 w-10 text-muted-foreground/40" />
+                      <p className="text-sm text-muted-foreground">Timeline appears after session ends</p>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>

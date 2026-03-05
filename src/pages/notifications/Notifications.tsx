@@ -12,7 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Bell, Mail, Clock, CheckCircle, XCircle, RefreshCw, AlertTriangle, BarChart3 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import emailNotificationService from '@/services/emailNotificationService';
-import type { NotificationPreferences, NotificationLog } from '@/types/analysis';
+import type { NotificationPreferences, NotificationLog } from '@/types/notification';
 
 export default function Notifications() {
   const { toast } = useToast();

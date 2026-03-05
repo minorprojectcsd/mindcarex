@@ -3,8 +3,7 @@ import type {
   NotificationPreferences,
   NotificationLog,
   NotificationStats,
-  SendNotificationRequest,
-} from '@/types/analysis';
+} from '@/types/notification';
 
 const BASE = '/api/notifications';
 

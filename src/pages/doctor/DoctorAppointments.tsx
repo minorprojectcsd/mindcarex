@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { Calendar, ArrowLeft, Video, XCircle } from 'lucide-react';
+import { Calendar, ArrowLeft, Video, XCircle, MessageSquare } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
@@ -70,17 +70,17 @@ export default function DoctorAppointments() {
     const isBooked = ['BOOKED', 'SCHEDULED'].includes(appointment.status);
 
     return (
-      <div className="flex items-center justify-between rounded-lg border p-4">
-        <div>
-          <p className="font-medium">{appointment.patient?.fullName || appointment.patient?.name || 'Patient'}</p>
-          <p className="text-sm text-muted-foreground">
-            {format(new Date(appointment.startTime), 'EEEE, MMMM d, yyyy · h:mm a')}
+      <div className="flex flex-col gap-3 rounded-lg border border-border p-3 sm:p-4">
+        <div className="min-w-0">
+          <p className="font-medium text-sm sm:text-base truncate">{appointment.patient?.fullName || appointment.patient?.name || 'Patient'}</p>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+            {format(new Date(appointment.startTime), 'EEE, MMM d, yyyy · h:mm a')}
             {appointment.endTime && (
               <> — {format(new Date(appointment.endTime), 'h:mm a')}</>
             )}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Badge
             variant={
               isLive ? 'default' :
@@ -88,42 +88,50 @@ export default function DoctorAppointments() {
               appointment.status === 'COMPLETED' ? 'outline' :
               'destructive'
             }
+            className="text-xs"
           >
             {isLive ? '🟢 Live' : appointment.status}
           </Badge>
           {isLive && (
-            <Button size="sm" onClick={() => navigate(`/video/${appointment.sessionId || appointment.id}`)}>
-              <Video className="mr-1 h-3 w-3" />
-              Resume
-            </Button>
+            <div className="flex gap-2 w-full sm:w-auto mt-1 sm:mt-0">
+              <Button size="sm" className="flex-1 sm:flex-initial text-xs" onClick={() => navigate(`/video/${appointment.sessionId || appointment.id}`)}>
+                <Video className="mr-1 h-3 w-3" />
+                Resume
+              </Button>
+              <Button size="sm" variant="outline" className="flex-1 sm:flex-initial text-xs" onClick={() => navigate(`/chat-session/${appointment.sessionId || appointment.id}`)}>
+                <MessageSquare className="mr-1 h-3 w-3" />
+                Chat
+              </Button>
+            </div>
           )}
           {isBooked && (
-            <>
+            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto mt-1 sm:mt-0">
               <Button
                 size="sm"
+                className="flex-1 sm:flex-initial text-xs"
                 disabled={startSessionMutation.isPending}
                 onClick={() => startSessionMutation.mutate(appointment.id)}
               >
-                <Video className="mr-2 h-4 w-4" />
+                <Video className="mr-1 h-3 w-3" />
                 Start Session
               </Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive">
+                  <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive h-8 w-8 p-0">
                     <XCircle className="h-4 w-4" />
                   </Button>
                 </AlertDialogTrigger>
-                <AlertDialogContent>
+                <AlertDialogContent className="mx-4 max-w-[calc(100vw-2rem)] sm:mx-auto sm:max-w-lg">
                   <AlertDialogHeader>
                     <AlertDialogTitle>Cancel Appointment?</AlertDialogTitle>
                     <AlertDialogDescription>
                       This will cancel the appointment with {appointment.patient?.fullName || appointment.patient?.name}. This action cannot be undone.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Keep</AlertDialogCancel>
+                  <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
+                    <AlertDialogCancel className="w-full sm:w-auto">Keep</AlertDialogCancel>
                     <AlertDialogAction
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      className="w-full sm:w-auto bg-destructive text-destructive-foreground hover:bg-destructive/90"
                       onClick={() => cancelMutation.mutate(appointment.id)}
                     >
                       Cancel Appointment
@@ -131,7 +139,7 @@ export default function DoctorAppointments() {
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
-            </>
+            </div>
           )}
         </div>
       </div>
@@ -140,42 +148,42 @@ export default function DoctorAppointments() {
 
   return (
     <DashboardLayout requireRole="DOCTOR">
-      <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate('/doctor/dashboard')}>
-            <ArrowLeft className="h-5 w-5" />
+      <div className="space-y-4 sm:space-y-6">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => navigate('/doctor/dashboard')}>
+            <ArrowLeft className="h-4 w-4" />
           </Button>
-          <div>
-            <h1 className="text-2xl font-bold">Appointments</h1>
-            <p className="text-muted-foreground">Manage your patient appointments</p>
+          <div className="min-w-0">
+            <h1 className="text-lg sm:text-2xl font-bold">Appointments</h1>
+            <p className="text-xs sm:text-sm text-muted-foreground">Manage your patient appointments</p>
           </div>
         </div>
 
         <Tabs defaultValue="active">
-          <TabsList>
-            <TabsTrigger value="active">Active ({active.length})</TabsTrigger>
-            <TabsTrigger value="completed">Completed ({completed.length})</TabsTrigger>
-            <TabsTrigger value="cancelled">Cancelled ({cancelled.length})</TabsTrigger>
+          <TabsList className="w-full grid grid-cols-3">
+            <TabsTrigger value="active" className="text-xs sm:text-sm">Active ({active.length})</TabsTrigger>
+            <TabsTrigger value="completed" className="text-xs sm:text-sm">Done ({completed.length})</TabsTrigger>
+            <TabsTrigger value="cancelled" className="text-xs sm:text-sm">Cancelled ({cancelled.length})</TabsTrigger>
           </TabsList>
 
           {(['active', 'completed', 'cancelled'] as const).map((tab) => {
             const list = tab === 'active' ? active : tab === 'completed' ? completed : cancelled;
             return (
-              <TabsContent key={tab} value={tab} className="mt-4">
+              <TabsContent key={tab} value={tab} className="mt-3 sm:mt-4">
                 <Card>
-                  <CardContent className="pt-6">
+                  <CardContent className="p-3 sm:pt-6">
                     {isLoading ? (
-                      <div className="space-y-4">
+                      <div className="space-y-3">
                         <Skeleton className="h-20 w-full" />
                         <Skeleton className="h-20 w-full" />
                       </div>
                     ) : list.length === 0 ? (
                       <div className="py-8 text-center">
-                        <Calendar className="mx-auto h-12 w-12 text-muted-foreground" />
-                        <p className="mt-4 text-muted-foreground">No {tab} appointments</p>
+                        <Calendar className="mx-auto h-10 w-10 text-muted-foreground" />
+                        <p className="mt-3 text-sm text-muted-foreground">No {tab} appointments</p>
                       </div>
                     ) : (
-                      <div className="space-y-4">
+                      <div className="space-y-3">
                         {list.map(apt => (
                           <AppointmentCard key={apt.id} appointment={apt} />
                         ))}

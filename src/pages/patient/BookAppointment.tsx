@@ -39,7 +39,7 @@ export default function BookAppointment() {
     onSuccess: () => {
       toast({
         title: '✅ Appointment Booked',
-        description: 'Your appointment has been scheduled. Confirmation emails sent to you and the doctor.',
+        description: 'Your appointment has been scheduled.',
       });
       navigate('/patient/appointments');
     },
@@ -82,53 +82,53 @@ export default function BookAppointment() {
 
   return (
     <DashboardLayout requireRole="PATIENT">
-      <div className="mx-auto max-w-2xl space-y-6">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-            <ArrowLeft className="h-5 w-5" />
+      <div className="mx-auto max-w-2xl space-y-4 sm:space-y-6">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => navigate(-1)}>
+            <ArrowLeft className="h-4 w-4" />
           </Button>
-          <div>
-            <h1 className="text-2xl font-bold">Book Appointment</h1>
-            <p className="text-muted-foreground">Schedule a session with a doctor</p>
+          <div className="min-w-0">
+            <h1 className="text-lg sm:text-2xl font-bold">Book Appointment</h1>
+            <p className="text-xs sm:text-sm text-muted-foreground">Schedule a session with a doctor</p>
           </div>
         </div>
 
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <User className="h-5 w-5" />
+          <CardHeader className="p-4 sm:p-6">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <User className="h-4 w-4 sm:h-5 sm:w-5" />
               Select a Doctor
             </CardTitle>
-            <CardDescription>Choose from our available mental health professionals</CardDescription>
+            <CardDescription className="text-xs sm:text-sm">Choose from our available mental health professionals</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-4 pb-4 sm:px-6 sm:pb-6">
             {loadingDoctors ? (
               <div className="space-y-3">
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-14 w-full" />
+                <Skeleton className="h-14 w-full" />
               </div>
             ) : doctors && doctors.length > 0 ? (
-              <div className="space-y-3">
+              <div className="space-y-2 sm:space-y-3">
                 {doctors.map((doctor: Doctor) => (
                   <div
                     key={doctor.id}
                     onClick={() => setSelectedDoctor(doctor.id)}
-                    className={`cursor-pointer rounded-lg border p-4 transition-all ${
+                    className={`cursor-pointer rounded-lg border p-3 sm:p-4 transition-all ${
                       selectedDoctor === doctor.id
                         ? 'border-primary bg-primary/5'
                         : 'hover:border-primary/50'
                     }`}
                   >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-medium text-sm sm:text-base truncate">
                           {doctor.fullName || doctor.name || doctor.email || 'Doctor'}
                         </p>
                         {doctor.specialization && (
-                          <p className="text-sm text-muted-foreground">{doctor.specialization}</p>
+                          <p className="text-xs text-muted-foreground truncate">{doctor.specialization}</p>
                         )}
                       </div>
-                      <div className={`h-4 w-4 rounded-full border-2 ${
+                      <div className={`h-4 w-4 shrink-0 rounded-full border-2 ${
                         selectedDoctor === doctor.id
                           ? 'border-primary bg-primary'
                           : 'border-muted-foreground'
@@ -138,23 +138,23 @@ export default function BookAppointment() {
                 ))}
               </div>
             ) : (
-              <p className="py-8 text-center text-muted-foreground">No doctors available at the moment.</p>
+              <p className="py-6 text-center text-sm text-muted-foreground">No doctors available at the moment.</p>
             )}
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5" />
+          <CardHeader className="p-4 sm:p-6">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <Clock className="h-4 w-4 sm:h-5 sm:w-5" />
               Schedule
             </CardTitle>
-            <CardDescription>Choose your preferred appointment time and duration</CardDescription>
+            <CardDescription className="text-xs sm:text-sm">Choose your preferred appointment time and duration</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-4 pb-4 sm:px-6 sm:pb-6">
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="scheduledAt">Appointment Date & Time</Label>
+                <Label htmlFor="scheduledAt" className="text-sm">Appointment Date & Time</Label>
                 <Input
                   id="scheduledAt"
                   type="datetime-local"
@@ -162,13 +162,14 @@ export default function BookAppointment() {
                   min={minDateTime}
                   onChange={(e) => setScheduledAt(e.target.value)}
                   required
+                  className="text-sm"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="duration">Session Duration</Label>
+                <Label htmlFor="duration" className="text-sm">Session Duration</Label>
                 <Select value={duration} onValueChange={setDuration}>
-                  <SelectTrigger>
+                  <SelectTrigger className="text-sm">
                     <SelectValue placeholder="Select duration" />
                   </SelectTrigger>
                   <SelectContent>
@@ -178,18 +179,19 @@ export default function BookAppointment() {
                   </SelectContent>
                 </Select>
                 <p className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <Info className="h-3 w-3" />
+                  <Info className="h-3 w-3 shrink-0" />
                   Maximum session duration is 1 hour
                 </p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="notes">Notes (optional)</Label>
+                <Label htmlFor="notes" className="text-sm">Notes (optional)</Label>
                 <Textarea
                   id="notes"
                   placeholder="Describe how you're feeling..."
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
+                  className="text-sm"
                 />
               </div>
 

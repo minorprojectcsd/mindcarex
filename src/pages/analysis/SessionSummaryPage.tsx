@@ -1,4 +1,4 @@
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -38,41 +38,43 @@ function getRiskBadge(level: string) {
 
 export default function SessionSummaryPage() {
   const { sessionId } = useParams();
+  const [searchParams] = useSearchParams();
+  const voiceSessionId = searchParams.get('voiceSessionId') || sessionId;
   const [approved, setApproved] = useState(false);
 
   const { data: summary, isLoading: loadingSummary, error: summaryError, refetch: refetchSummary } = useQuery({
-    queryKey: ['voice-summary', sessionId],
-    queryFn: () => voiceAnalysisService.getSummary(sessionId!),
-    enabled: !!sessionId,
+    queryKey: ['voice-summary', voiceSessionId],
+    queryFn: () => voiceAnalysisService.getSummary(voiceSessionId!),
+    enabled: !!voiceSessionId,
   });
 
   const { data: transcript, isLoading: loadingTranscript } = useQuery({
-    queryKey: ['voice-transcript', sessionId],
-    queryFn: () => voiceAnalysisService.getTranscript(sessionId!),
-    enabled: !!sessionId,
+    queryKey: ['voice-transcript', voiceSessionId],
+    queryFn: () => voiceAnalysisService.getTranscript(voiceSessionId!),
+    enabled: !!voiceSessionId,
   });
 
   const { data: timeline } = useQuery({
-    queryKey: ['voice-timeline', sessionId],
-    queryFn: () => voiceAnalysisService.getTimeline(sessionId!),
-    enabled: !!sessionId,
+    queryKey: ['voice-timeline', voiceSessionId],
+    queryFn: () => voiceAnalysisService.getTimeline(voiceSessionId!),
+    enabled: !!voiceSessionId,
   });
 
   const { data: report, isLoading: loadingReport, error: reportError, refetch: refetchReport } = useQuery({
-    queryKey: ['report', sessionId],
-    queryFn: () => reportService.getReport(sessionId!),
-    enabled: !!sessionId,
+    queryKey: ['report', voiceSessionId],
+    queryFn: () => reportService.getReport(voiceSessionId!),
+    enabled: !!voiceSessionId,
   });
 
   const isLoading = loadingSummary || loadingReport;
   const hasError = summaryError || reportError;
 
   // Chart data
-  const timelineData = (timeline || []).map((pt) => ({
+  const timelineData = Array.isArray(timeline) ? timeline.map((pt) => ({
     chunk: pt.chunk_index,
     stress: Math.round(pt.stress_score),
     color: getStressColor(pt.stress_score),
-  }));
+  })) : [];
 
   const stateData = summary?.state_distribution
     ? Object.entries(summary.state_distribution).map(([name, value]) => ({

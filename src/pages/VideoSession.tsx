@@ -198,11 +198,16 @@ export default function VideoSession() {
   const startCameraAnalysis = useCallback(async () => {
     if (!sessionId) return;
     try {
-      const { camera_session_id } = await cameraService.startSession(sessionId);
-      cameraSessionIdRef.current = camera_session_id;
+      const result = await cameraService.startSession(sessionId);
+      const camSid = result.camera_session_id || (result as any).session_id;
+      if (!camSid) {
+        console.error('Camera session ID not returned:', result);
+        return;
+      }
+      cameraSessionIdRef.current = camSid;
 
       // Camera WS for live face updates
-      const wsUrl = cameraService.getLiveWebSocketUrl(camera_session_id);
+      const wsUrl = cameraService.getLiveWebSocketUrl(camSid);
       const ws = new WebSocket(wsUrl);
       ws.onmessage = (evt) => {
         try {
@@ -219,7 +224,7 @@ export default function VideoSession() {
         canvasRef.current = document.createElement('canvas');
       }
       cameraIntervalRef.current = setInterval(() => {
-        captureAndSendFrame(camera_session_id);
+        captureAndSendFrame(camSid);
       }, 7000);
     } catch (e: any) {
       console.error('Camera analysis start failed:', e);
@@ -413,18 +418,22 @@ export default function VideoSession() {
   const handleEndSession = async (summaryData?: SessionSummaryData) => {
     setEndingSession(true);
     try {
-      // Stop voice analysis
+      // Stop voice analysis and generate report only if stop succeeds
       if (voiceSessionIdRef.current) {
         try {
-          await voiceAnalysisService.stopSession();
+          await voiceAnalysisService.stopSession(voiceSessionIdRef.current);
           toast({ title: 'Voice analysis completed' });
-        } catch (e) { console.error('Voice stop error:', e); }
 
-        // Generate report
-        try {
-          await reportService.generate(voiceSessionIdRef.current);
-          toast({ title: 'Report generated', description: 'AI clinical report is ready.' });
-        } catch (e) { console.error('Report gen error:', e); }
+          // Generate report only after successful stop
+          try {
+            await reportService.generate(voiceSessionIdRef.current);
+            toast({ title: 'Report generated', description: 'AI clinical report is ready.' });
+          } catch (e) {
+            console.error('Report gen error:', e);
+          }
+        } catch (e) {
+          console.error('Voice stop error:', e);
+        }
       }
 
       // End session on Spring Boot
@@ -442,9 +451,9 @@ export default function VideoSession() {
       }
     } finally {
       cleanup();
-      // Navigate to summary if we have a voice session
+      // Navigate with voiceSessionId so summary page uses the correct ID
       if (voiceSessionIdRef.current) {
-        navigate(`/session/${sessionId}/summary`);
+        navigate(`/session/${sessionId}/summary?voiceSessionId=${voiceSessionIdRef.current}`);
       } else {
         navigate('/dashboard');
       }

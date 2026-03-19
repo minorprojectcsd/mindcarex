@@ -75,8 +75,12 @@ export const voiceAnalysisService = {
     return unwrap(res);
   },
 
-  async stopSession(): Promise<VoiceSessionSummary> {
-    const res = await fetch(`${BASE}/api/voice/session/stop`, { method: 'POST' });
+  async stopSession(sessionId?: string): Promise<VoiceSessionSummary> {
+    const res = await fetch(`${BASE}/api/voice/session/stop`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(sessionId ? { session_id: sessionId } : {}),
+    });
     return unwrap(res);
   },
 

@@ -70,11 +70,11 @@ export default function SessionSummaryPage() {
   const hasError = summaryError || reportError;
 
   // Chart data
-  const timelineData = (timeline || []).map((pt) => ({
+  const timelineData = Array.isArray(timeline) ? timeline.map((pt) => ({
     chunk: pt.chunk_index,
     stress: Math.round(pt.stress_score),
     color: getStressColor(pt.stress_score),
-  }));
+  })) : [];
 
   const stateData = summary?.state_distribution
     ? Object.entries(summary.state_distribution).map(([name, value]) => ({

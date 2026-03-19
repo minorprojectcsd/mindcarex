@@ -198,11 +198,16 @@ export default function VideoSession() {
   const startCameraAnalysis = useCallback(async () => {
     if (!sessionId) return;
     try {
-      const { camera_session_id } = await cameraService.startSession(sessionId);
-      cameraSessionIdRef.current = camera_session_id;
+      const result = await cameraService.startSession(sessionId);
+      const camSid = result.camera_session_id || (result as any).session_id;
+      if (!camSid) {
+        console.error('Camera session ID not returned:', result);
+        return;
+      }
+      cameraSessionIdRef.current = camSid;
 
       // Camera WS for live face updates
-      const wsUrl = cameraService.getLiveWebSocketUrl(camera_session_id);
+      const wsUrl = cameraService.getLiveWebSocketUrl(camSid);
       const ws = new WebSocket(wsUrl);
       ws.onmessage = (evt) => {
         try {
@@ -219,7 +224,7 @@ export default function VideoSession() {
         canvasRef.current = document.createElement('canvas');
       }
       cameraIntervalRef.current = setInterval(() => {
-        captureAndSendFrame(camera_session_id);
+        captureAndSendFrame(camSid);
       }, 7000);
     } catch (e: any) {
       console.error('Camera analysis start failed:', e);

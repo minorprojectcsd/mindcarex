@@ -4,7 +4,7 @@ import { Client } from '@stomp/stompjs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Mic, MicOff, Video, VideoOff, PhoneOff, Send, User, MessageSquare, X } from 'lucide-react';
-import { SessionSummaryModal, SessionSummaryData } from '@/components/session/SessionSummaryModal';
+import { SessionSummaryModal, SessionSummaryData, AIReportPrefill } from '@/components/session/SessionSummaryModal';
 import { sessionService, SessionDetails, getParticipantName } from '@/services/sessionService';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { voiceAnalysisService, type VoiceChunkResult } from '@/services/voiceAnalysisService';
@@ -61,10 +61,21 @@ export default function VideoSession() {
   const [chatOpen, setChatOpen] = useState(!isMobile);
   const [unreadCount, setUnreadCount] = useState(0);
 
+  // Stream ready state — triggers analysis start
+  const [streamReady, setStreamReady] = useState(false);
+
+  // Module status tracking
+  const [voiceActive, setVoiceActive] = useState(false);
+  const [cameraActive, setCameraActive] = useState(false);
+
   // Live analysis state
   const [latestChunk, setLatestChunk] = useState<VoiceChunkResult | null>(null);
   const [stressHistory, setStressHistory] = useState<number[]>([]);
   const [faceEmotion, setFaceEmotion] = useState<string | null>(null);
+
+  // AI report prefill for summary modal
+  const [reportPrefill, setReportPrefill] = useState<AIReportPrefill | null>(null);
+  const [prefillLoading, setPrefillLoading] = useState(false);
 
   const remoteName = sessionDetails
     ? userRole === 'DOCTOR'
@@ -115,6 +126,7 @@ export default function VideoSession() {
       const patientId = sessionDetails?.appointment?.patient?.id || userId || 'unknown';
       const { session_id } = await voiceAnalysisService.startSession(patientId, `Session ${sessionId}`);
       voiceSessionIdRef.current = session_id;
+      setVoiceActive(true);
       toast({ title: 'Voice analysis started', description: `Session: ${session_id.slice(0, 8)}…` });
 
       // Connect WebSocket for live updates
@@ -144,6 +156,7 @@ export default function VideoSession() {
       startAudioCapture(session_id);
     } catch (e: any) {
       console.error('Voice analysis start failed:', e);
+      setVoiceActive(false);
       toast({ title: 'Voice analysis error', description: e.message, variant: 'destructive' });
     }
   }, [sessionDetails, sessionId, userId]);
@@ -205,6 +218,7 @@ export default function VideoSession() {
         return;
       }
       cameraSessionIdRef.current = camSid;
+      setCameraActive(true);
 
       // Camera WS for live face updates
       const wsUrl = cameraService.getLiveWebSocketUrl(camSid);
@@ -228,6 +242,7 @@ export default function VideoSession() {
       }, 7000);
     } catch (e: any) {
       console.error('Camera analysis start failed:', e);
+      setCameraActive(false);
     }
   }, [sessionId]);
 
@@ -251,13 +266,13 @@ export default function VideoSession() {
     }, 'image/jpeg', 0.7);
   };
 
-  // Start analysis once we have the stream and session details
+  // Start analysis once we have stream + session details (doctor only)
   useEffect(() => {
-    if (localStreamRef.current && sessionDetails && userRole === 'DOCTOR') {
+    if (streamReady && sessionDetails && userRole === 'DOCTOR') {
       startVoiceAnalysis();
       startCameraAnalysis();
     }
-  }, [sessionDetails, startVoiceAnalysis, startCameraAnalysis]);
+  }, [streamReady, sessionDetails, startVoiceAnalysis, startCameraAnalysis, userRole]);
 
   const initConnection = async () => {
     try {
@@ -268,6 +283,7 @@ export default function VideoSession() {
 
       localStreamRef.current = stream;
       if (localVideoRef.current) localVideoRef.current.srcObject = stream;
+      setStreamReady(true); // <-- triggers analysis start
 
       const pc = new RTCPeerConnection({
         iceServers: [
@@ -415,27 +431,61 @@ export default function VideoSession() {
     cameraWsRef.current?.close();
   };
 
-  const handleEndSession = async (summaryData?: SessionSummaryData) => {
-    setEndingSession(true);
-    try {
-      // Stop voice analysis and generate report only if stop succeeds
+  // End session: stop analysis → generate report → show auto-filled summary
+  const handleEndClick = async () => {
+    if (userRole === 'DOCTOR') {
+      // First stop voice and generate report, then show modal with prefilled data
+      setPrefillLoading(true);
+      setShowSummaryModal(true);
+
+      let prefill: AIReportPrefill | null = null;
+
       if (voiceSessionIdRef.current) {
         try {
           await voiceAnalysisService.stopSession(voiceSessionIdRef.current);
+          setVoiceActive(false);
           toast({ title: 'Voice analysis completed' });
 
-          // Generate report only after successful stop
           try {
-            await reportService.generate(voiceSessionIdRef.current);
-            toast({ title: 'Report generated', description: 'AI clinical report is ready.' });
-          } catch (e) {
+            const report = await reportService.generate(voiceSessionIdRef.current);
+            toast({ title: 'AI Report generated' });
+
+            // Extract prefill data from report
+            const rj = report.report_json || {};
+            prefill = {
+              summary: rj.session_overview || report.clinical_notes || '',
+              keyPoints: [
+                rj.stress_analysis,
+                rj.vocal_indicators,
+                rj.emotional_state,
+              ].filter(Boolean) as string[],
+              recommendations: Array.isArray(rj.recommendations)
+                ? rj.recommendations.join('\n• ')
+                : rj.recommendations || '',
+              nextSteps: rj.follow_up || '',
+              clinicalNotes: report.clinical_notes || '',
+              guardianMessage: report.guardian_message || '',
+            };
+          } catch (e: any) {
             console.error('Report gen error:', e);
+            toast({ title: 'Report generation failed', description: 'You can still fill the summary manually.', variant: 'destructive' });
           }
-        } catch (e) {
+        } catch (e: any) {
           console.error('Voice stop error:', e);
+          toast({ title: 'Could not stop voice session', description: e.message, variant: 'destructive' });
         }
       }
 
+      setReportPrefill(prefill);
+      setPrefillLoading(false);
+    } else {
+      handleEndSession();
+    }
+  };
+
+  const handleEndSession = async (summaryData?: SessionSummaryData) => {
+    setEndingSession(true);
+    try {
       // End session on Spring Boot
       if (userRole === 'DOCTOR') {
         try {
@@ -451,7 +501,6 @@ export default function VideoSession() {
       }
     } finally {
       cleanup();
-      // Navigate with voiceSessionId so summary page uses the correct ID
       if (voiceSessionIdRef.current) {
         navigate(`/session/${sessionId}/summary?voiceSessionId=${voiceSessionIdRef.current}`);
       } else {
@@ -460,15 +509,28 @@ export default function VideoSession() {
     }
   };
 
-  const handleEndClick = () => {
-    if (userRole === 'DOCTOR') setShowSummaryModal(true);
-    else handleEndSession();
-  };
-
   const handleOpenChat = () => {
     setChatOpen(true);
     setUnreadCount(0);
   };
+
+  // ─── Module status indicator ───
+  const ModuleStatus = () => (
+    <div className="flex items-center gap-1.5">
+      <span className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-medium ${voiceActive ? 'bg-green-500/10 text-green-600' : 'bg-muted text-muted-foreground'}`}>
+        <span className={`h-1.5 w-1.5 rounded-full ${voiceActive ? 'bg-green-500 animate-pulse' : 'bg-muted-foreground/40'}`} />
+        Voice
+      </span>
+      <span className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-medium ${cameraActive ? 'bg-green-500/10 text-green-600' : 'bg-muted text-muted-foreground'}`}>
+        <span className={`h-1.5 w-1.5 rounded-full ${cameraActive ? 'bg-green-500 animate-pulse' : 'bg-muted-foreground/40'}`} />
+        Camera
+      </span>
+      <span className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-medium ${isConnected ? 'bg-green-500/10 text-green-600' : 'bg-muted text-muted-foreground'}`}>
+        <span className={`h-1.5 w-1.5 rounded-full ${isConnected ? 'bg-green-500 animate-pulse' : 'bg-muted-foreground/40'}`} />
+        Chat
+      </span>
+    </div>
+  );
 
   const ChatPanel = (
     <div className={
@@ -526,6 +588,12 @@ export default function VideoSession() {
             <span className={`h-1.5 w-1.5 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
             <span className="hidden sm:inline">{isConnected ? 'Connected' : 'Disconnected'}</span>
           </span>
+          {/* Module status badges — doctor only */}
+          {userRole === 'DOCTOR' && (
+            <div className="hidden sm:flex">
+              <ModuleStatus />
+            </div>
+          )}
         </div>
         <Button variant="destructive" size="sm" className="shrink-0 text-xs" onClick={handleEndClick}>
           <PhoneOff className="mr-1 h-3.5 w-3.5" />
@@ -533,6 +601,13 @@ export default function VideoSession() {
           <span className="sm:hidden">End</span>
         </Button>
       </header>
+
+      {/* Mobile module status */}
+      {userRole === 'DOCTOR' && (
+        <div className="flex sm:hidden items-center justify-center gap-1 border-b border-border py-1">
+          <ModuleStatus />
+        </div>
+      )}
 
       {/* Main content */}
       <div className="flex flex-1 overflow-hidden">
@@ -619,6 +694,8 @@ export default function VideoSession() {
         onClose={() => setShowSummaryModal(false)}
         onSubmit={(data) => handleEndSession(data)}
         loading={endingSession}
+        prefill={reportPrefill}
+        prefillLoading={prefillLoading}
       />
     </div>
   );

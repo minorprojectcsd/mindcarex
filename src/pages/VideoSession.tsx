@@ -98,10 +98,10 @@ export default function VideoSession() {
     const formattedState = dominantState?.replace(/_/g, ' ');
 
     const keyPoints = [
-      typeof summary.avg_stress === 'number' ? `Average stress score: ${summary.avg_stress.toFixed(1)}` : null,
-      typeof summary.peak_stress === 'number' ? `Peak stress score: ${summary.peak_stress.toFixed(1)}` : null,
+      typeof summary.avg_stress_score === 'number' ? `Average stress score: ${summary.avg_stress_score.toFixed(1)}` : null,
+      typeof summary.peak_stress_score === 'number' ? `Peak stress score: ${summary.peak_stress_score.toFixed(1)}` : null,
       summary.trend ? `Stress trend: ${summary.trend}` : null,
-      summary.risk_level ? `Risk level: ${summary.risk_level}` : null,
+      summary.overall_risk_level ? `Risk level: ${summary.overall_risk_level}` : null,
       formattedState ? `Dominant mental state: ${formattedState}` : null,
       topEmotion ? `Top detected emotion: ${topEmotion}` : null,
       durationMinutes ? `Session duration: ${durationMinutes} minute${durationMinutes > 1 ? 's' : ''}` : null,

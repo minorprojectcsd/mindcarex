@@ -93,8 +93,8 @@ export default function VideoSession() {
 
   const buildFallbackPrefill = useCallback((summary: VoiceSessionSummary): AIReportPrefill => {
     const dominantState = Object.entries(summary.state_distribution || {}).sort((a, b) => b[1] - a[1])[0]?.[0];
-    const topEmotion = summary.top_emotions?.[0]?.emotion;
-    const durationMinutes = summary.duration_seconds ? Math.max(1, Math.round(summary.duration_seconds / 60)) : null;
+    const topEmotion = summary.top_emotions?.[0]?.label;
+    const durationMinutes = summary.total_duration_sec ? Math.max(1, Math.round(summary.total_duration_sec / 60)) : null;
     const formattedState = dominantState?.replace(/_/g, ' ');
 
     const keyPoints = [

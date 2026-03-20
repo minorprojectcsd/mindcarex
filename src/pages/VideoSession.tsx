@@ -115,9 +115,9 @@ export default function VideoSession() {
         summary.overall_risk_level ? `Risk level was assessed as ${summary.overall_risk_level}.` : null,
       ].filter(Boolean).join(' '),
       keyPoints,
-      recommendations: summary.risk_level?.toLowerCase() === 'high'
+      recommendations: summary.overall_risk_level?.toLowerCase() === 'high'
         ? 'Review the session carefully, monitor for escalation, and plan a closer follow-up.'
-        : summary.risk_level?.toLowerCase() === 'medium'
+        : summary.overall_risk_level?.toLowerCase() === 'medium'
           ? 'Review the stress pattern and consider a structured follow-up based on the findings.'
           : 'Continue monitoring progress and reinforce the current care plan as appropriate.',
       nextSteps: summary.trend

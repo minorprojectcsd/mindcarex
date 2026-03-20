@@ -79,16 +79,18 @@ export default function SessionSummaryPage() {
   const stateData = summary?.state_distribution
     ? Object.entries(summary.state_distribution).map(([name, value]) => ({
         name: name.replace(/_/g, ' '),
-        value: Math.round(value * 100),
+        value: value,
       }))
     : [];
 
-  const emotionData = (summary?.top_emotions || []).map((e) => ({
-    name: e.emotion,
-    score: Math.round(e.score * 100),
-  }));
+  const emotionData = Array.isArray(summary?.top_emotions)
+    ? summary.top_emotions.map((e) => ({
+        name: e.label,
+        score: Math.round(e.avg_score * 100),
+      }))
+    : [];
 
-  const pitchData = (summary?.pitch_contour || summary?.pitch_summary?.contour || []).map((v, i) => ({
+  const pitchData = (summary?.pitch_summary?.contour || []).map((v: number, i: number) => ({
     idx: i,
     pitch: Math.round(v),
   }));

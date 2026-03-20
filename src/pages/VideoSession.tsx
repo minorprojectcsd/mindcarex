@@ -8,14 +8,13 @@ import { Mic, MicOff, Video, VideoOff, PhoneOff, Send, User, MessageSquare, X } 
 import { SessionSummaryModal, SessionSummaryData, AIReportPrefill } from '@/components/session/SessionSummaryModal';
 import { sessionService, SessionDetails, getParticipantName } from '@/services/sessionService';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { voiceAnalysisService, type VoiceChunkResult } from '@/services/voiceAnalysisService';
+import { voiceAnalysisService, type VoiceChunkResult, type VoiceSessionSummary } from '@/services/voiceAnalysisService';
 import { cameraService } from '@/services/cameraService';
 import { reportService } from '@/services/reportService';
 import { StressOverlay } from '@/components/video/StressOverlay';
 import { toast } from '@/hooks/use-toast';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://mindcarex-backend.onrender.com';
-
 
 export default function VideoSession() {
   const { sessionId } = useParams();
@@ -42,6 +41,8 @@ export default function VideoSession() {
   const voiceWsRef = useRef<WebSocket | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunkIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const voiceRestartTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const shouldUploadVoiceChunksRef = useRef(false);
 
   // Camera analysis refs
   const cameraSessionIdRef = useRef<string | null>(null);
@@ -90,6 +91,41 @@ export default function VideoSession() {
       : getParticipantName(sessionDetails.appointment.patient)
     : userName;
 
+  const buildFallbackPrefill = useCallback((summary: VoiceSessionSummary): AIReportPrefill => {
+    const dominantState = Object.entries(summary.state_distribution || {}).sort((a, b) => b[1] - a[1])[0]?.[0];
+    const topEmotion = summary.top_emotions?.[0]?.emotion;
+    const durationMinutes = summary.duration_seconds ? Math.max(1, Math.round(summary.duration_seconds / 60)) : null;
+    const formattedState = dominantState?.replace(/_/g, ' ');
+
+    const keyPoints = [
+      typeof summary.avg_stress === 'number' ? `Average stress score: ${summary.avg_stress.toFixed(1)}` : null,
+      typeof summary.peak_stress === 'number' ? `Peak stress score: ${summary.peak_stress.toFixed(1)}` : null,
+      summary.trend ? `Stress trend: ${summary.trend}` : null,
+      summary.risk_level ? `Risk level: ${summary.risk_level}` : null,
+      formattedState ? `Dominant mental state: ${formattedState}` : null,
+      topEmotion ? `Top detected emotion: ${topEmotion}` : null,
+      durationMinutes ? `Session duration: ${durationMinutes} minute${durationMinutes > 1 ? 's' : ''}` : null,
+    ].filter(Boolean) as string[];
+
+    return {
+      summary: [
+        'Session analysis completed.',
+        typeof summary.avg_stress === 'number' ? `Average stress was ${summary.avg_stress.toFixed(1)}` : null,
+        typeof summary.peak_stress === 'number' ? `with a peak of ${summary.peak_stress.toFixed(1)}` : null,
+        summary.risk_level ? `Risk level was assessed as ${summary.risk_level}.` : null,
+      ].filter(Boolean).join(' '),
+      keyPoints,
+      recommendations: summary.risk_level?.toLowerCase() === 'high'
+        ? 'Review the session carefully, monitor for escalation, and plan a closer follow-up.'
+        : summary.risk_level?.toLowerCase() === 'medium'
+          ? 'Review the stress pattern and consider a structured follow-up based on the findings.'
+          : 'Continue monitoring progress and reinforce the current care plan as appropriate.',
+      nextSteps: summary.trend
+        ? `Review the ${summary.trend.toLowerCase()} stress trend and confirm the next follow-up action with the patient.`
+        : 'Review the findings and confirm the next follow-up action with the patient.',
+    };
+  }, []);
+
   // Auto-scroll chat
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -99,7 +135,7 @@ export default function VideoSession() {
     if (messages.length > 0 && !chatOpen) {
       setUnreadCount(prev => prev + 1);
     }
-  }, [messages.length]);
+  }, [messages.length, chatOpen]);
 
   // Fetch session details
   useEffect(() => {
@@ -127,6 +163,7 @@ export default function VideoSession() {
       const patientId = sessionDetails?.appointment?.patient?.id || userId || 'unknown';
       const { session_id } = await voiceAnalysisService.startSession(patientId, `Session ${sessionId}`);
       voiceSessionIdRef.current = session_id;
+      shouldUploadVoiceChunksRef.current = true;
       setVoiceActive(true);
       toast({ title: 'Voice analysis started', description: `Session: ${session_id.slice(0, 8)}…` });
 
@@ -148,7 +185,9 @@ export default function VideoSession() {
             setLatestChunk(chunk);
             setStressHistory(prev => [...prev, Math.round(chunk.stress_score)]);
           }
-        } catch { /* ignore pong */ }
+        } catch {
+          // ignore pong
+        }
       };
       ws.onclose = () => clearInterval(pingInterval);
       voiceWsRef.current = ws;
@@ -184,16 +223,19 @@ export default function VideoSession() {
       if (e.data.size > 0) chunks.push(e.data);
     };
     recorder.onstop = async () => {
-      if (chunks.length > 0) {
-        const blob = new Blob(chunks, { type: mimeType });
+      if (!shouldUploadVoiceChunksRef.current || voiceSessionIdRef.current !== voiceSid || chunks.length === 0) {
         chunks = [];
-        try {
-          const result = await voiceAnalysisService.uploadChunk(voiceSid, blob);
-          setLatestChunk(result);
-          setStressHistory(prev => [...prev, Math.round(result.stress_score)]);
-        } catch (e) {
-          console.error('Chunk upload error:', e);
-        }
+        return;
+      }
+
+      const blob = new Blob(chunks, { type: mimeType });
+      chunks = [];
+      try {
+        const result = await voiceAnalysisService.uploadChunk(voiceSid, blob);
+        setLatestChunk(result);
+        setStressHistory(prev => [...prev, Math.round(result.stress_score)]);
+      } catch (e) {
+        console.error('Chunk upload error:', e);
       }
     };
 
@@ -201,8 +243,10 @@ export default function VideoSession() {
     audioChunkIntervalRef.current = setInterval(() => {
       if (recorder.state === 'recording') {
         recorder.stop();
-        setTimeout(() => {
-          if (voiceSessionIdRef.current) recorder.start();
+        voiceRestartTimeoutRef.current = setTimeout(() => {
+          if (voiceSessionIdRef.current === voiceSid && shouldUploadVoiceChunksRef.current) {
+            recorder.start();
+          }
         }, 100);
       }
     }, 7000);
@@ -230,7 +274,9 @@ export default function VideoSession() {
           if (data.dominant_emotion || data.data?.dominant_emotion) {
             setFaceEmotion((data.data || data).dominant_emotion);
           }
-        } catch { /* ignore */ }
+        } catch {
+          // ignore
+        }
       };
       cameraWsRef.current = ws;
 
@@ -284,7 +330,7 @@ export default function VideoSession() {
 
       localStreamRef.current = stream;
       if (localVideoRef.current) localVideoRef.current.srcObject = stream;
-      setStreamReady(true); // <-- triggers analysis start
+      setStreamReady(true);
 
       const pc = new RTCPeerConnection({
         iceServers: [
@@ -402,11 +448,18 @@ export default function VideoSession() {
 
   const toggleMute = () => {
     const t = localStreamRef.current?.getAudioTracks()[0];
-    if (t) { t.enabled = !t.enabled; setIsMuted(!t.enabled); }
+    if (t) {
+      t.enabled = !t.enabled;
+      setIsMuted(!t.enabled);
+    }
   };
+
   const toggleVideo = () => {
     const t = localStreamRef.current?.getVideoTracks()[0];
-    if (t) { t.enabled = !t.enabled; setIsVideoOff(!t.enabled); }
+    if (t) {
+      t.enabled = !t.enabled;
+      setIsVideoOff(!t.enabled);
+    }
   };
 
   const handleSendMessage = () => {
@@ -423,10 +476,14 @@ export default function VideoSession() {
     localStreamRef.current?.getTracks().forEach((t) => t.stop());
     peerConnectionRef.current?.close();
     stompClientRef.current?.deactivate();
+
     // Stop voice analysis
+    shouldUploadVoiceChunksRef.current = false;
     if (audioChunkIntervalRef.current) clearInterval(audioChunkIntervalRef.current);
+    if (voiceRestartTimeoutRef.current) clearTimeout(voiceRestartTimeoutRef.current);
     if (mediaRecorderRef.current?.state === 'recording') mediaRecorderRef.current.stop();
     voiceWsRef.current?.close();
+
     // Stop camera analysis
     if (cameraIntervalRef.current) clearInterval(cameraIntervalRef.current);
     cameraWsRef.current?.close();
@@ -435,41 +492,48 @@ export default function VideoSession() {
   // End session: stop analysis → generate report → show auto-filled summary
   const handleEndClick = async () => {
     if (userRole === 'DOCTOR') {
-      // First stop voice and generate report, then show modal with prefilled data
       setPrefillLoading(true);
       setShowSummaryModal(true);
 
       let prefill: AIReportPrefill | null = null;
+      const currentVoiceSessionId = voiceSessionIdRef.current;
 
-      if (voiceSessionIdRef.current) {
+      if (currentVoiceSessionId) {
         try {
-          await voiceAnalysisService.stopSession(voiceSessionIdRef.current);
+          shouldUploadVoiceChunksRef.current = false;
+          if (audioChunkIntervalRef.current) clearInterval(audioChunkIntervalRef.current);
+          if (voiceRestartTimeoutRef.current) clearTimeout(voiceRestartTimeoutRef.current);
+          if (mediaRecorderRef.current?.state === 'recording') mediaRecorderRef.current.stop();
+          voiceWsRef.current?.close();
+
+          const stopSummary = await voiceAnalysisService.stopSession(currentVoiceSessionId);
+          prefill = buildFallbackPrefill(stopSummary);
           setVoiceActive(false);
           toast({ title: 'Voice analysis completed' });
 
           try {
-            const report = await reportService.generate(voiceSessionIdRef.current);
+            const report = await reportService.generate(currentVoiceSessionId);
             toast({ title: 'AI Report generated' });
 
-            // Extract prefill data from report
             const rj = report.report_json || {};
             prefill = {
-              summary: rj.session_overview || report.clinical_notes || '',
+              summary: rj.session_overview || report.clinical_notes || prefill.summary || '',
               keyPoints: [
                 rj.stress_analysis,
                 rj.vocal_indicators,
                 rj.emotional_state,
-              ].filter(Boolean) as string[],
+                ...(prefill.keyPoints || []),
+              ].filter((value, index, array) => Boolean(value) && array.indexOf(value) === index) as string[],
               recommendations: Array.isArray(rj.recommendations)
                 ? rj.recommendations.join('\n• ')
-                : rj.recommendations || '',
-              nextSteps: rj.follow_up || '',
+                : rj.recommendations || prefill.recommendations || '',
+              nextSteps: rj.follow_up || prefill.nextSteps || '',
               clinicalNotes: report.clinical_notes || '',
               guardianMessage: report.guardian_message || '',
             };
           } catch (e: any) {
             console.error('Report gen error:', e);
-            toast({ title: 'Report generation failed', description: 'You can still fill the summary manually.', variant: 'destructive' });
+            toast({ title: 'AI report failed', description: 'Voice summary was prefilled instead.', variant: 'destructive' });
           }
         } catch (e: any) {
           console.error('Voice stop error:', e);
@@ -486,8 +550,9 @@ export default function VideoSession() {
 
   const handleEndSession = async (summaryData?: SessionSummaryData) => {
     setEndingSession(true);
+    const finalVoiceSessionId = voiceSessionIdRef.current;
+
     try {
-      // End session on Spring Boot
       if (userRole === 'DOCTOR') {
         try {
           const body = summaryData?.aiSummary ? summaryData : undefined;
@@ -502,8 +567,8 @@ export default function VideoSession() {
       }
     } finally {
       cleanup();
-      if (voiceSessionIdRef.current) {
-        navigate(`/session/${sessionId}/summary?voiceSessionId=${voiceSessionIdRef.current}`);
+      if (finalVoiceSessionId) {
+        navigate(`/session/${sessionId}/summary?voiceSessionId=${finalVoiceSessionId}`);
       } else {
         navigate('/dashboard');
       }
@@ -589,7 +654,6 @@ export default function VideoSession() {
             <span className={`h-1.5 w-1.5 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
             <span className="hidden sm:inline">{isConnected ? 'Connected' : 'Disconnected'}</span>
           </span>
-          {/* Module status badges — doctor only */}
           {userRole === 'DOCTOR' && (
             <div className="hidden sm:flex">
               <ModuleStatus />
@@ -603,7 +667,6 @@ export default function VideoSession() {
         </Button>
       </header>
 
-      {/* Mobile module status */}
       {userRole === 'DOCTOR' && (
         <div className="flex sm:hidden items-center justify-center gap-1 border-b border-border py-1">
           <ModuleStatus />

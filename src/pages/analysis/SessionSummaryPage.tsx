@@ -157,7 +157,7 @@ export default function SessionSummaryPage() {
                     <Shield className="h-4 w-4" />
                     <span className="text-xs">Risk Level</span>
                   </div>
-                  {summary ? getRiskBadge(summary.risk_level) : <span className="text-lg">—</span>}
+                  {summary ? getRiskBadge(summary.overall_risk_level) : <span className="text-lg">—</span>}
                 </CardContent>
               </Card>
               <Card>

@@ -110,9 +110,9 @@ export default function VideoSession() {
     return {
       summary: [
         'Session analysis completed.',
-        typeof summary.avg_stress === 'number' ? `Average stress was ${summary.avg_stress.toFixed(1)}` : null,
-        typeof summary.peak_stress === 'number' ? `with a peak of ${summary.peak_stress.toFixed(1)}` : null,
-        summary.risk_level ? `Risk level was assessed as ${summary.risk_level}.` : null,
+        typeof summary.avg_stress_score === 'number' ? `Average stress was ${summary.avg_stress_score.toFixed(1)}` : null,
+        typeof summary.peak_stress_score === 'number' ? `with a peak of ${summary.peak_stress_score.toFixed(1)}` : null,
+        summary.overall_risk_level ? `Risk level was assessed as ${summary.overall_risk_level}.` : null,
       ].filter(Boolean).join(' '),
       keyPoints,
       recommendations: summary.risk_level?.toLowerCase() === 'high'

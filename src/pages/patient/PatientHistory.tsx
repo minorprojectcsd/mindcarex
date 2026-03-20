@@ -76,8 +76,8 @@ export default function PatientHistory() {
         <div className="space-y-3">
           {sessions?.map((session) => {
             const hasReport = reportMap.has(session.session_id);
-            const avgStress = session.summary?.avg_stress;
-            const riskLevel = session.summary?.risk_level;
+            const avgStress = session.summary?.avg_stress_score;
+            const riskLevel = session.summary?.overall_risk_level;
 
             return (
               <Card key={session.session_id} className="transition-shadow hover:shadow-md">

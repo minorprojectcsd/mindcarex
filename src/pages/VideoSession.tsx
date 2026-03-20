@@ -515,7 +515,7 @@ export default function VideoSession() {
             const report = await reportService.generate(currentVoiceSessionId);
             toast({ title: 'AI Report generated' });
 
-            const rj = report.report_json || {};
+            const rj = report.report || {};
             prefill = {
               summary: rj.session_overview || report.clinical_notes || prefill.summary || '',
               keyPoints: [

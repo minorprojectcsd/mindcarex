@@ -66,11 +66,11 @@ export default function VoiceAnalysis() {
   // Emotion per chunk for chart
   const emotionChartData = (session?.chunks || []).map((c, i) => {
     const row: any = { chunk: i };
-    (c.top_emotions || []).forEach(e => { row[e.emotion] = Math.round(e.score * 100); });
+    (c.top_emotions || []).forEach(e => { row[e.label] = Math.round(e.score * 100); });
     return row;
   });
   const allEmotions = Array.from(
-    new Set((session?.chunks || []).flatMap(c => (c.top_emotions || []).map(e => e.emotion)))
+    new Set((session?.chunks || []).flatMap(c => (c.top_emotions || []).map(e => e.label)))
   );
   const EMOTION_COLORS = ['#22c55e', '#eab308', '#f97316', '#ef4444', '#3b82f6', '#8b5cf6', '#ec4899'];
 

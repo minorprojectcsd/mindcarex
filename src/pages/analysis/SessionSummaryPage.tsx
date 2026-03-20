@@ -167,8 +167,8 @@ export default function SessionSummaryPage() {
                     <span className="text-xs">Duration</span>
                   </div>
                   <p className="text-2xl font-bold">
-                    {summary?.duration_seconds
-                      ? `${Math.floor(summary.duration_seconds / 60)}m`
+                    {summary?.total_duration_sec
+                      ? `${Math.floor(summary.total_duration_sec / 60)}m`
                       : `${timelineData.length * 7}s`}
                   </p>
                 </CardContent>

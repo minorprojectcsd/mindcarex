@@ -93,15 +93,15 @@ export default function VideoSession() {
 
   const buildFallbackPrefill = useCallback((summary: VoiceSessionSummary): AIReportPrefill => {
     const dominantState = Object.entries(summary.state_distribution || {}).sort((a, b) => b[1] - a[1])[0]?.[0];
-    const topEmotion = summary.top_emotions?.[0]?.emotion;
-    const durationMinutes = summary.duration_seconds ? Math.max(1, Math.round(summary.duration_seconds / 60)) : null;
+    const topEmotion = summary.top_emotions?.[0]?.label;
+    const durationMinutes = summary.total_duration_sec ? Math.max(1, Math.round(summary.total_duration_sec / 60)) : null;
     const formattedState = dominantState?.replace(/_/g, ' ');
 
     const keyPoints = [
-      typeof summary.avg_stress === 'number' ? `Average stress score: ${summary.avg_stress.toFixed(1)}` : null,
-      typeof summary.peak_stress === 'number' ? `Peak stress score: ${summary.peak_stress.toFixed(1)}` : null,
+      typeof summary.avg_stress_score === 'number' ? `Average stress score: ${summary.avg_stress_score.toFixed(1)}` : null,
+      typeof summary.peak_stress_score === 'number' ? `Peak stress score: ${summary.peak_stress_score.toFixed(1)}` : null,
       summary.trend ? `Stress trend: ${summary.trend}` : null,
-      summary.risk_level ? `Risk level: ${summary.risk_level}` : null,
+      summary.overall_risk_level ? `Risk level: ${summary.overall_risk_level}` : null,
       formattedState ? `Dominant mental state: ${formattedState}` : null,
       topEmotion ? `Top detected emotion: ${topEmotion}` : null,
       durationMinutes ? `Session duration: ${durationMinutes} minute${durationMinutes > 1 ? 's' : ''}` : null,
@@ -110,14 +110,14 @@ export default function VideoSession() {
     return {
       summary: [
         'Session analysis completed.',
-        typeof summary.avg_stress === 'number' ? `Average stress was ${summary.avg_stress.toFixed(1)}` : null,
-        typeof summary.peak_stress === 'number' ? `with a peak of ${summary.peak_stress.toFixed(1)}` : null,
-        summary.risk_level ? `Risk level was assessed as ${summary.risk_level}.` : null,
+        typeof summary.avg_stress_score === 'number' ? `Average stress was ${summary.avg_stress_score.toFixed(1)}` : null,
+        typeof summary.peak_stress_score === 'number' ? `with a peak of ${summary.peak_stress_score.toFixed(1)}` : null,
+        summary.overall_risk_level ? `Risk level was assessed as ${summary.overall_risk_level}.` : null,
       ].filter(Boolean).join(' '),
       keyPoints,
-      recommendations: summary.risk_level?.toLowerCase() === 'high'
+      recommendations: summary.overall_risk_level?.toLowerCase() === 'high'
         ? 'Review the session carefully, monitor for escalation, and plan a closer follow-up.'
-        : summary.risk_level?.toLowerCase() === 'medium'
+        : summary.overall_risk_level?.toLowerCase() === 'medium'
           ? 'Review the stress pattern and consider a structured follow-up based on the findings.'
           : 'Continue monitoring progress and reinforce the current care plan as appropriate.',
       nextSteps: summary.trend
@@ -515,7 +515,7 @@ export default function VideoSession() {
             const report = await reportService.generate(currentVoiceSessionId);
             toast({ title: 'AI Report generated' });
 
-            const rj = report.report_json || {};
+            const rj = report.report || {};
             prefill = {
               summary: rj.session_overview || report.clinical_notes || prefill.summary || '',
               keyPoints: [

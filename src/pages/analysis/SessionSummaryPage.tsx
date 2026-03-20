@@ -79,23 +79,25 @@ export default function SessionSummaryPage() {
   const stateData = summary?.state_distribution
     ? Object.entries(summary.state_distribution).map(([name, value]) => ({
         name: name.replace(/_/g, ' '),
-        value: Math.round(value * 100),
+        value: value,
       }))
     : [];
 
-  const emotionData = (summary?.top_emotions || []).map((e) => ({
-    name: e.emotion,
-    score: Math.round(e.score * 100),
-  }));
+  const emotionData = Array.isArray(summary?.top_emotions)
+    ? summary.top_emotions.map((e) => ({
+        name: e.label,
+        score: Math.round(e.avg_score * 100),
+      }))
+    : [];
 
-  const pitchData = (summary?.pitch_contour || summary?.pitch_summary?.contour || []).map((v, i) => ({
+  const pitchData = (summary?.pitch_summary?.contour || []).map((v: number, i: number) => ({
     idx: i,
     pitch: Math.round(v),
   }));
 
   const PIE_COLORS = [STRESS_COLORS.green, STRESS_COLORS.yellow, STRESS_COLORS.orange, STRESS_COLORS.red];
 
-  const rj = report?.report_json || {};
+  const rj = report?.report || {};
 
   return (
     <DashboardLayout>
@@ -133,8 +135,8 @@ export default function SessionSummaryPage() {
                     <Activity className="h-4 w-4" />
                     <span className="text-xs">Avg Stress</span>
                   </div>
-                  <p className="text-2xl font-bold" style={{ color: getStressColor(summary?.avg_stress || 0) }}>
-                    {summary?.avg_stress?.toFixed(1) ?? '—'}
+                  <p className="text-2xl font-bold" style={{ color: getStressColor(summary?.avg_stress_score || 0) }}>
+                    {summary?.avg_stress_score?.toFixed(1) ?? '—'}
                   </p>
                 </CardContent>
               </Card>
@@ -144,8 +146,8 @@ export default function SessionSummaryPage() {
                     <TrendingUp className="h-4 w-4" />
                     <span className="text-xs">Peak Stress</span>
                   </div>
-                  <p className="text-2xl font-bold" style={{ color: getStressColor(summary?.peak_stress || 0) }}>
-                    {summary?.peak_stress?.toFixed(1) ?? '—'}
+                  <p className="text-2xl font-bold" style={{ color: getStressColor(summary?.peak_stress_score || 0) }}>
+                    {summary?.peak_stress_score?.toFixed(1) ?? '—'}
                   </p>
                 </CardContent>
               </Card>
@@ -155,7 +157,7 @@ export default function SessionSummaryPage() {
                     <Shield className="h-4 w-4" />
                     <span className="text-xs">Risk Level</span>
                   </div>
-                  {summary ? getRiskBadge(summary.risk_level) : <span className="text-lg">—</span>}
+                  {summary ? getRiskBadge(summary.overall_risk_level) : <span className="text-lg">—</span>}
                 </CardContent>
               </Card>
               <Card>
@@ -165,8 +167,8 @@ export default function SessionSummaryPage() {
                     <span className="text-xs">Duration</span>
                   </div>
                   <p className="text-2xl font-bold">
-                    {summary?.duration_seconds
-                      ? `${Math.floor(summary.duration_seconds / 60)}m`
+                    {summary?.total_duration_sec
+                      ? `${Math.floor(summary.total_duration_sec / 60)}m`
                       : `${timelineData.length * 7}s`}
                   </p>
                 </CardContent>

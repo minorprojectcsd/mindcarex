@@ -1,13 +1,5 @@
 const BASE = import.meta.env.VITE_REPORT_API_URL || 'https://mindcarex-report-api.onrender.com';
 
-async function unwrap<T>(res: Response): Promise<T> {
-  const body = await res.json();
-  if (body.success === false) {
-    throw new Error(body.error || body.detail || 'Request failed');
-  }
-  return (body.data ?? body) as T;
-}
-
 export interface ReportJson {
   session_overview?: string;
   stress_analysis?: string;
@@ -20,7 +12,9 @@ export interface ReportJson {
 
 export interface GeneratedReport {
   session_id: string;
-  report_json: ReportJson;
+  patient_id?: string;
+  generated_at?: string;
+  report: ReportJson;
   clinical_notes: string;
   guardian_message: string;
 }
@@ -30,6 +24,14 @@ export interface ReportHistoryEntry {
   risk_assessment_preview: string;
   guardian_message_preview: string;
   created_at: string;
+}
+
+async function unwrapReport<T>(res: Response): Promise<T> {
+  const body = await res.json();
+  if (body.success === false) {
+    throw new Error(body.error || body.detail || 'Request failed');
+  }
+  return (body.data ?? body) as T;
 }
 
 export const reportService = {
@@ -43,16 +45,16 @@ export const reportService = {
       const err = await res.json().catch(() => null);
       throw new Error(err?.detail || err?.error || `Report generation failed (${res.status})`);
     }
-    return unwrap<GeneratedReport>(res);
+    return unwrapReport<GeneratedReport>(res);
   },
 
   async getReport(sessionId: string): Promise<GeneratedReport> {
     const res = await fetch(`${BASE}/api/report/${sessionId}`);
-    return unwrap<GeneratedReport>(res);
+    return unwrapReport<GeneratedReport>(res);
   },
 
   async getPatientHistory(patientId: string): Promise<ReportHistoryEntry[]> {
     const res = await fetch(`${BASE}/api/report/patient/${patientId}/history`);
-    return unwrap<ReportHistoryEntry[]>(res);
+    return unwrapReport<ReportHistoryEntry[]>(res);
   },
 };

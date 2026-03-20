@@ -98,8 +98,8 @@ export function StressOverlay({ latestChunk, stressHistory, faceEmotion }: Props
       {topEmotions.length > 0 && (
         <div className="space-y-1">
           {topEmotions.map((e) => (
-            <div key={e.emotion} className="flex items-center gap-2">
-              <span className="w-14 truncate text-[10px] capitalize text-muted-foreground">{e.emotion}</span>
+          <div key={e.label} className="flex items-center gap-2">
+              <span className="w-14 truncate text-[10px] capitalize text-muted-foreground">{e.label}</span>
               <div className="h-1.5 flex-1 rounded-full bg-muted">
                 <div
                   className="h-full rounded-full"

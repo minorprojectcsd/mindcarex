@@ -97,7 +97,7 @@ export default function SessionSummaryPage() {
 
   const PIE_COLORS = [STRESS_COLORS.green, STRESS_COLORS.yellow, STRESS_COLORS.orange, STRESS_COLORS.red];
 
-  const rj = report?.report_json || {};
+  const rj = report?.report || {};
 
   return (
     <DashboardLayout>

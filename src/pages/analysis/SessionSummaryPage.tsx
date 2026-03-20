@@ -146,8 +146,8 @@ export default function SessionSummaryPage() {
                     <TrendingUp className="h-4 w-4" />
                     <span className="text-xs">Peak Stress</span>
                   </div>
-                  <p className="text-2xl font-bold" style={{ color: getStressColor(summary?.peak_stress || 0) }}>
-                    {summary?.peak_stress?.toFixed(1) ?? '—'}
+                  <p className="text-2xl font-bold" style={{ color: getStressColor(summary?.peak_stress_score || 0) }}>
+                    {summary?.peak_stress_score?.toFixed(1) ?? '—'}
                   </p>
                 </CardContent>
               </Card>

@@ -15,7 +15,7 @@ import { StressOverlay } from '@/components/video/StressOverlay';
 import { toast } from '@/hooks/use-toast';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://mindcarex-backend.onrender.com';
-const WS_URL = API_BASE.replace(/^http/, 'ws') + '/ws';
+
 
 export default function VideoSession() {
   const { sessionId } = useParams();

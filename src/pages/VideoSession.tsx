@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Client } from '@stomp/stompjs';
+import SockJS from 'sockjs-client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Mic, MicOff, Video, VideoOff, PhoneOff, Send, User, MessageSquare, X } from 'lucide-react';
@@ -14,7 +15,7 @@ import { StressOverlay } from '@/components/video/StressOverlay';
 import { toast } from '@/hooks/use-toast';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://mindcarex-backend.onrender.com';
-const WS_URL = API_BASE.replace(/^http/, 'ws') + '/ws';
+
 
 export default function VideoSession() {
   const { sessionId } = useParams();
@@ -331,7 +332,7 @@ export default function VideoSession() {
 
   const connectWebSocket = () => {
     const client = new Client({
-      brokerURL: WS_URL,
+      webSocketFactory: () => new SockJS(`${API_BASE}/ws`),
       reconnectDelay: 5000,
       heartbeatIncoming: 10000,
       heartbeatOutgoing: 10000,

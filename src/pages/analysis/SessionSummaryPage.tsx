@@ -135,8 +135,8 @@ export default function SessionSummaryPage() {
                     <Activity className="h-4 w-4" />
                     <span className="text-xs">Avg Stress</span>
                   </div>
-                  <p className="text-2xl font-bold" style={{ color: getStressColor(summary?.avg_stress || 0) }}>
-                    {summary?.avg_stress?.toFixed(1) ?? '—'}
+                  <p className="text-2xl font-bold" style={{ color: getStressColor(summary?.avg_stress_score || 0) }}>
+                    {summary?.avg_stress_score?.toFixed(1) ?? '—'}
                   </p>
                 </CardContent>
               </Card>

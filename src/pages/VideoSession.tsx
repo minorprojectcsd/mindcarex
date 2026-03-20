@@ -332,7 +332,7 @@ export default function VideoSession() {
 
   const connectWebSocket = () => {
     const client = new Client({
-      brokerURL: WS_URL,
+      webSocketFactory: () => new SockJS(`${API_BASE}/ws`),
       reconnectDelay: 5000,
       heartbeatIncoming: 10000,
       heartbeatOutgoing: 10000,

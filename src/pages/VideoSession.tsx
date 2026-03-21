@@ -23,6 +23,7 @@ export default function VideoSession() {
 
   const userId = localStorage.getItem('userId');
   const userRole = localStorage.getItem('role');
+  const isDoctor = userRole?.toUpperCase() === 'DOCTOR';
   const token = localStorage.getItem('token');
   const userName = localStorage.getItem('mindcarex_auth_user')
     ? JSON.parse(localStorage.getItem('mindcarex_auth_user')!).name

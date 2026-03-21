@@ -23,6 +23,7 @@ export default function VideoSession() {
 
   const userId = localStorage.getItem('userId');
   const userRole = localStorage.getItem('role');
+  const isDoctor = userRole?.toUpperCase() === 'DOCTOR';
   const token = localStorage.getItem('token');
   const userName = localStorage.getItem('mindcarex_auth_user')
     ? JSON.parse(localStorage.getItem('mindcarex_auth_user')!).name
@@ -80,13 +81,13 @@ export default function VideoSession() {
   const [prefillLoading, setPrefillLoading] = useState(false);
 
   const remoteName = sessionDetails
-    ? userRole === 'DOCTOR'
+    ? isDoctor
       ? getParticipantName(sessionDetails.appointment.patient)
       : getParticipantName(sessionDetails.appointment.doctor)
     : 'Participant';
 
   const localName = sessionDetails
-    ? userRole === 'DOCTOR'
+    ? isDoctor
       ? getParticipantName(sessionDetails.appointment.doctor)
       : getParticipantName(sessionDetails.appointment.patient)
     : userName;
@@ -161,10 +162,12 @@ export default function VideoSession() {
   const startVoiceAnalysis = useCallback(async () => {
     try {
       const patientId = sessionDetails?.appointment?.patient?.id || userId || 'unknown';
+      console.log('[Voice] Starting voice analysis for patient:', patientId);
       const { session_id } = await voiceAnalysisService.startSession(patientId, `Session ${sessionId}`);
       voiceSessionIdRef.current = session_id;
       shouldUploadVoiceChunksRef.current = true;
       setVoiceActive(true);
+      console.log('[Voice] Session started:', session_id);
       toast({ title: 'Voice analysis started', description: `Session: ${session_id.slice(0, 8)}…` });
 
       // Connect WebSocket for live updates
@@ -173,6 +176,7 @@ export default function VideoSession() {
       let pingInterval: ReturnType<typeof setInterval>;
 
       ws.onopen = () => {
+        console.log('[Voice WS] Connected');
         pingInterval = setInterval(() => {
           if (ws.readyState === WebSocket.OPEN) ws.send('ping');
         }, 30000);
@@ -182,14 +186,15 @@ export default function VideoSession() {
           const data = JSON.parse(evt.data);
           if (data.event === 'chunk_result' || data.stress_score !== undefined) {
             const chunk = (data.data || data) as VoiceChunkResult;
+            console.log('[Voice WS] Chunk result:', chunk);
             setLatestChunk(chunk);
-            setStressHistory(prev => [...prev, Math.round(chunk.stress_score)]);
+            setStressHistory(prev => [...prev.slice(-20), Math.round(chunk.stress_score)]);
           }
         } catch {
           // ignore pong
         }
       };
-      ws.onclose = () => clearInterval(pingInterval);
+      ws.onclose = () => { console.log('[Voice WS] Closed'); clearInterval(pingInterval); };
       voiceWsRef.current = ws;
 
       // Start audio capture every 7s
@@ -232,8 +237,9 @@ export default function VideoSession() {
       chunks = [];
       try {
         const result = await voiceAnalysisService.uploadChunk(voiceSid, blob);
+        console.log('[Voice] Chunk upload result:', result);
         setLatestChunk(result);
-        setStressHistory(prev => [...prev, Math.round(result.stress_score)]);
+        setStressHistory(prev => [...prev.slice(-20), Math.round(result.stress_score)]);
       } catch (e) {
         console.error('Chunk upload error:', e);
       }
@@ -256,7 +262,9 @@ export default function VideoSession() {
   const startCameraAnalysis = useCallback(async () => {
     if (!sessionId) return;
     try {
+      console.log('[Camera] Starting camera analysis for session:', sessionId);
       const result = await cameraService.startSession(sessionId);
+      console.log('[Camera] startSession response:', result);
       const camSid = result.camera_session_id || (result as any).session_id;
       if (!camSid) {
         console.error('Camera session ID not returned:', result);
@@ -264,20 +272,26 @@ export default function VideoSession() {
       }
       cameraSessionIdRef.current = camSid;
       setCameraActive(true);
+      console.log('[Camera] Session started:', camSid);
 
       // Camera WS for live face updates
       const wsUrl = cameraService.getLiveWebSocketUrl(camSid);
       const ws = new WebSocket(wsUrl);
+      ws.onopen = () => console.log('[Camera WS] Connected');
       ws.onmessage = (evt) => {
         try {
-          const data = JSON.parse(evt.data);
-          if (data.dominant_emotion || data.data?.dominant_emotion) {
-            setFaceEmotion((data.data || data).dominant_emotion);
+          const raw = JSON.parse(evt.data);
+          const data = raw.data || raw;
+          console.log('[Camera WS] Frame result:', data);
+          const expression = data.dominant_expression || data.dominant_emotion;
+          if (expression) {
+            setFaceEmotion(expression);
           }
         } catch {
           // ignore
         }
       };
+      ws.onclose = () => console.log('[Camera WS] Closed');
       cameraWsRef.current = ws;
 
       // Capture frames every 7s
@@ -306,7 +320,9 @@ export default function VideoSession() {
       if (!blob) return;
       try {
         const result = await cameraService.uploadFrame(camSid, blob);
-        setFaceEmotion(result.dominant_emotion);
+        console.log('[Camera] Frame upload result:', result);
+        const expression = (result as any).dominant_expression || result.dominant_emotion;
+        if (expression) setFaceEmotion(expression);
       } catch (e) {
         console.error('Frame upload error:', e);
       }
@@ -315,7 +331,9 @@ export default function VideoSession() {
 
   // Start analysis once we have stream + session details (doctor only)
   useEffect(() => {
-    if (streamReady && sessionDetails && userRole === 'DOCTOR') {
+    console.log('[Analysis] Check:', { streamReady, hasSessionDetails: !!sessionDetails, userRole, isDoctor });
+    if (streamReady && sessionDetails && isDoctor) {
+      console.log('[Analysis] Starting voice + camera analysis...');
       startVoiceAnalysis();
       startCameraAnalysis();
     }
@@ -392,7 +410,7 @@ export default function VideoSession() {
           if (signal.from === userId) return;
           handleSignal(signal);
         });
-        if (userRole === 'DOCTOR') setTimeout(createOffer, 1000);
+        if (isDoctor) setTimeout(createOffer, 1000);
       },
       onDisconnect: () => setIsConnected(false),
     });
@@ -491,7 +509,7 @@ export default function VideoSession() {
 
   // End session: stop analysis → generate report → show auto-filled summary
   const handleEndClick = async () => {
-    if (userRole === 'DOCTOR') {
+    if (isDoctor) {
       setPrefillLoading(true);
       setShowSummaryModal(true);
 
@@ -553,7 +571,7 @@ export default function VideoSession() {
     const finalVoiceSessionId = voiceSessionIdRef.current;
 
     try {
-      if (userRole === 'DOCTOR') {
+      if (isDoctor) {
         try {
           const body = summaryData?.aiSummary ? summaryData : undefined;
           await fetch(`${API_BASE}/api/sessions/${sessionId}/end`, {
@@ -654,7 +672,7 @@ export default function VideoSession() {
             <span className={`h-1.5 w-1.5 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
             <span className="hidden sm:inline">{isConnected ? 'Connected' : 'Disconnected'}</span>
           </span>
-          {userRole === 'DOCTOR' && (
+          {isDoctor && (
             <div className="hidden sm:flex">
               <ModuleStatus />
             </div>
@@ -662,12 +680,12 @@ export default function VideoSession() {
         </div>
         <Button variant="destructive" size="sm" className="shrink-0 text-xs" onClick={handleEndClick}>
           <PhoneOff className="mr-1 h-3.5 w-3.5" />
-          <span className="hidden sm:inline">{userRole === 'DOCTOR' ? 'End Session' : 'Leave'}</span>
+          <span className="hidden sm:inline">{isDoctor ? 'End Session' : 'Leave'}</span>
           <span className="sm:hidden">End</span>
         </Button>
       </header>
 
-      {userRole === 'DOCTOR' && (
+      {isDoctor && (
         <div className="flex sm:hidden items-center justify-center gap-1 border-b border-border py-1">
           <ModuleStatus />
         </div>
@@ -686,7 +704,7 @@ export default function VideoSession() {
           </div>
 
           {/* Stress Overlay — doctor only, top-right */}
-          {userRole === 'DOCTOR' && (
+          {isDoctor && (
             <div className="absolute right-2 top-2 sm:right-3 sm:top-3 z-10">
               <StressOverlay
                 latestChunk={latestChunk}

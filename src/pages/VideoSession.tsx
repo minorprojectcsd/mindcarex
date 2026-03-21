@@ -261,7 +261,9 @@ export default function VideoSession() {
   const startCameraAnalysis = useCallback(async () => {
     if (!sessionId) return;
     try {
+      console.log('[Camera] Starting camera analysis for session:', sessionId);
       const result = await cameraService.startSession(sessionId);
+      console.log('[Camera] startSession response:', result);
       const camSid = result.camera_session_id || (result as any).session_id;
       if (!camSid) {
         console.error('Camera session ID not returned:', result);
@@ -269,20 +271,26 @@ export default function VideoSession() {
       }
       cameraSessionIdRef.current = camSid;
       setCameraActive(true);
+      console.log('[Camera] Session started:', camSid);
 
       // Camera WS for live face updates
       const wsUrl = cameraService.getLiveWebSocketUrl(camSid);
       const ws = new WebSocket(wsUrl);
+      ws.onopen = () => console.log('[Camera WS] Connected');
       ws.onmessage = (evt) => {
         try {
-          const data = JSON.parse(evt.data);
-          if (data.dominant_emotion || data.data?.dominant_emotion) {
-            setFaceEmotion((data.data || data).dominant_emotion);
+          const raw = JSON.parse(evt.data);
+          const data = raw.data || raw;
+          console.log('[Camera WS] Frame result:', data);
+          const expression = data.dominant_expression || data.dominant_emotion;
+          if (expression) {
+            setFaceEmotion(expression);
           }
         } catch {
           // ignore
         }
       };
+      ws.onclose = () => console.log('[Camera WS] Closed');
       cameraWsRef.current = ws;
 
       // Capture frames every 7s

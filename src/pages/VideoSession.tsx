@@ -81,13 +81,13 @@ export default function VideoSession() {
   const [prefillLoading, setPrefillLoading] = useState(false);
 
   const remoteName = sessionDetails
-    ? userRole === 'DOCTOR'
+    ? isDoctor
       ? getParticipantName(sessionDetails.appointment.patient)
       : getParticipantName(sessionDetails.appointment.doctor)
     : 'Participant';
 
   const localName = sessionDetails
-    ? userRole === 'DOCTOR'
+    ? isDoctor
       ? getParticipantName(sessionDetails.appointment.doctor)
       : getParticipantName(sessionDetails.appointment.patient)
     : userName;
@@ -333,7 +333,7 @@ export default function VideoSession() {
   useEffect(() => {
     console.log('[Analysis] Check:', { streamReady, hasSessionDetails: !!sessionDetails, userRole });
     console.log('[Analysis] userRole from localStorage:', localStorage.getItem('role'));
-    const isDoctor = userRole === 'DOCTOR' || userRole === 'doctor' || userRole === 'Doctor';
+    const isDoctor = isDoctor || userRole === 'doctor' || userRole === 'Doctor';
     if (streamReady && sessionDetails && isDoctor) {
       console.log('[Analysis] Starting voice + camera analysis...');
       startVoiceAnalysis();
@@ -412,7 +412,7 @@ export default function VideoSession() {
           if (signal.from === userId) return;
           handleSignal(signal);
         });
-        if (userRole === 'DOCTOR') setTimeout(createOffer, 1000);
+        if (isDoctor) setTimeout(createOffer, 1000);
       },
       onDisconnect: () => setIsConnected(false),
     });
@@ -511,7 +511,7 @@ export default function VideoSession() {
 
   // End session: stop analysis → generate report → show auto-filled summary
   const handleEndClick = async () => {
-    if (userRole === 'DOCTOR') {
+    if (isDoctor) {
       setPrefillLoading(true);
       setShowSummaryModal(true);
 
@@ -573,7 +573,7 @@ export default function VideoSession() {
     const finalVoiceSessionId = voiceSessionIdRef.current;
 
     try {
-      if (userRole === 'DOCTOR') {
+      if (isDoctor) {
         try {
           const body = summaryData?.aiSummary ? summaryData : undefined;
           await fetch(`${API_BASE}/api/sessions/${sessionId}/end`, {
@@ -674,7 +674,7 @@ export default function VideoSession() {
             <span className={`h-1.5 w-1.5 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
             <span className="hidden sm:inline">{isConnected ? 'Connected' : 'Disconnected'}</span>
           </span>
-          {userRole === 'DOCTOR' && (
+          {isDoctor && (
             <div className="hidden sm:flex">
               <ModuleStatus />
             </div>
@@ -682,12 +682,12 @@ export default function VideoSession() {
         </div>
         <Button variant="destructive" size="sm" className="shrink-0 text-xs" onClick={handleEndClick}>
           <PhoneOff className="mr-1 h-3.5 w-3.5" />
-          <span className="hidden sm:inline">{userRole === 'DOCTOR' ? 'End Session' : 'Leave'}</span>
+          <span className="hidden sm:inline">{isDoctor ? 'End Session' : 'Leave'}</span>
           <span className="sm:hidden">End</span>
         </Button>
       </header>
 
-      {userRole === 'DOCTOR' && (
+      {isDoctor && (
         <div className="flex sm:hidden items-center justify-center gap-1 border-b border-border py-1">
           <ModuleStatus />
         </div>
@@ -706,7 +706,7 @@ export default function VideoSession() {
           </div>
 
           {/* Stress Overlay — doctor only, top-right */}
-          {userRole === 'DOCTOR' && (
+          {isDoctor && (
             <div className="absolute right-2 top-2 sm:right-3 sm:top-3 z-10">
               <StressOverlay
                 latestChunk={latestChunk}

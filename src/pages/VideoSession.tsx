@@ -161,10 +161,12 @@ export default function VideoSession() {
   const startVoiceAnalysis = useCallback(async () => {
     try {
       const patientId = sessionDetails?.appointment?.patient?.id || userId || 'unknown';
+      console.log('[Voice] Starting voice analysis for patient:', patientId);
       const { session_id } = await voiceAnalysisService.startSession(patientId, `Session ${sessionId}`);
       voiceSessionIdRef.current = session_id;
       shouldUploadVoiceChunksRef.current = true;
       setVoiceActive(true);
+      console.log('[Voice] Session started:', session_id);
       toast({ title: 'Voice analysis started', description: `Session: ${session_id.slice(0, 8)}…` });
 
       // Connect WebSocket for live updates
@@ -173,6 +175,7 @@ export default function VideoSession() {
       let pingInterval: ReturnType<typeof setInterval>;
 
       ws.onopen = () => {
+        console.log('[Voice WS] Connected');
         pingInterval = setInterval(() => {
           if (ws.readyState === WebSocket.OPEN) ws.send('ping');
         }, 30000);
@@ -182,14 +185,15 @@ export default function VideoSession() {
           const data = JSON.parse(evt.data);
           if (data.event === 'chunk_result' || data.stress_score !== undefined) {
             const chunk = (data.data || data) as VoiceChunkResult;
+            console.log('[Voice WS] Chunk result:', chunk);
             setLatestChunk(chunk);
-            setStressHistory(prev => [...prev, Math.round(chunk.stress_score)]);
+            setStressHistory(prev => [...prev.slice(-20), Math.round(chunk.stress_score)]);
           }
         } catch {
           // ignore pong
         }
       };
-      ws.onclose = () => clearInterval(pingInterval);
+      ws.onclose = () => { console.log('[Voice WS] Closed'); clearInterval(pingInterval); };
       voiceWsRef.current = ws;
 
       // Start audio capture every 7s

@@ -6,6 +6,14 @@ export interface Doctor {
   fullName?: string;
   name?: string;
   specialization?: string;
+  experienceYears?: number | null;
+  qualifications?: string | null;
+  bio?: string | null;
+  languages?: string | null;
+  clinicAddress?: string | null;
+  consultationFee?: string | null;
+  availabilityStatus?: string;
+  licenseNumber?: string;
 }
 
 export interface PatientAppointment {

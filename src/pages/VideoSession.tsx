@@ -440,7 +440,12 @@ export default function VideoSession() {
     const pc = peerConnectionRef.current;
     if (!pc) return;
     try {
-      if (signal.type === 'offer') {
+      if (signal.type === 'join' && isDoctor) {
+        // Patient joined — send a fresh offer so they can connect
+        console.log('[WebRTC] Patient joined, sending new offer');
+        pendingCandidatesRef.current = [];
+        createOffer();
+      } else if (signal.type === 'offer') {
         await pc.setRemoteDescription({ type: 'offer', sdp: signal.sdp });
         for (const c of pendingCandidatesRef.current) await pc.addIceCandidate(c);
         pendingCandidatesRef.current = [];

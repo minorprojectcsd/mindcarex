@@ -319,7 +319,9 @@ export default function VideoSession() {
       if (!blob) return;
       try {
         const result = await cameraService.uploadFrame(camSid, blob);
-        setFaceEmotion(result.dominant_emotion);
+        console.log('[Camera] Frame upload result:', result);
+        const expression = (result as any).dominant_expression || result.dominant_emotion;
+        if (expression) setFaceEmotion(expression);
       } catch (e) {
         console.error('Frame upload error:', e);
       }

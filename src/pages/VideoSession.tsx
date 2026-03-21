@@ -61,7 +61,7 @@ export default function VideoSession() {
   const [sessionDetails, setSessionDetails] = useState<SessionDetails | null>(null);
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [endingSession, setEndingSession] = useState(false);
-  const [chatOpen, setChatOpen] = useState(!isMobile);
+  const [chatOpen, setChatOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
   // Stream ready state — triggers analysis start
@@ -410,7 +410,13 @@ export default function VideoSession() {
           if (signal.from === userId) return;
           handleSignal(signal);
         });
-        if (isDoctor) setTimeout(createOffer, 1000);
+        if (isDoctor) {
+          // Create offer and also listen for patient join to re-offer
+          setTimeout(createOffer, 1000);
+        } else {
+          // Patient: notify doctor to send a new offer
+          sendSignal({ type: 'join', from: userId });
+        }
       },
       onDisconnect: () => setIsConnected(false),
     });
@@ -434,7 +440,12 @@ export default function VideoSession() {
     const pc = peerConnectionRef.current;
     if (!pc) return;
     try {
-      if (signal.type === 'offer') {
+      if (signal.type === 'join' && isDoctor) {
+        // Patient joined — send a fresh offer so they can connect
+        console.log('[WebRTC] Patient joined, sending new offer');
+        pendingCandidatesRef.current = [];
+        createOffer();
+      } else if (signal.type === 'offer') {
         await pc.setRemoteDescription({ type: 'offer', sdp: signal.sdp });
         for (const c of pendingCandidatesRef.current) await pc.addIceCandidate(c);
         pendingCandidatesRef.current = [];

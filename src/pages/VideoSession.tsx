@@ -410,7 +410,13 @@ export default function VideoSession() {
           if (signal.from === userId) return;
           handleSignal(signal);
         });
-        if (isDoctor) setTimeout(createOffer, 1000);
+        if (isDoctor) {
+          // Create offer and also listen for patient join to re-offer
+          setTimeout(createOffer, 1000);
+        } else {
+          // Patient: notify doctor to send a new offer
+          sendSignal({ type: 'join', from: userId });
+        }
       },
       onDisconnect: () => setIsConnected(false),
     });

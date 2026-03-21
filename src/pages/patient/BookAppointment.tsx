@@ -110,33 +110,110 @@ export default function BookAppointment() {
               </div>
             ) : doctors && doctors.length > 0 ? (
               <div className="space-y-2 sm:space-y-3">
-                {doctors.map((doctor: Doctor) => (
-                  <div
-                    key={doctor.id}
-                    onClick={() => setSelectedDoctor(doctor.id)}
-                    className={`cursor-pointer rounded-lg border p-3 sm:p-4 transition-all ${
-                      selectedDoctor === doctor.id
-                        ? 'border-primary bg-primary/5'
-                        : 'hover:border-primary/50'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="font-medium text-sm sm:text-base truncate">
-                          {doctor.fullName || doctor.name || doctor.email || 'Doctor'}
-                        </p>
-                        {doctor.specialization && (
-                          <p className="text-xs text-muted-foreground truncate">{doctor.specialization}</p>
-                        )}
+                {doctors.map((doctor: Doctor) => {
+                  const isSelected = selectedDoctor === doctor.id;
+                  return (
+                    <div key={doctor.id}>
+                      <div
+                        onClick={() => setSelectedDoctor(isSelected ? '' : doctor.id)}
+                        className={`cursor-pointer rounded-lg border p-3 sm:p-4 transition-all ${
+                          isSelected ? 'border-primary bg-primary/5' : 'hover:border-primary/50'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="font-medium text-sm sm:text-base truncate">
+                              {doctor.fullName || doctor.name || doctor.email || 'Doctor'}
+                            </p>
+                            <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                              {doctor.specialization && (
+                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{doctor.specialization}</Badge>
+                              )}
+                              {doctor.experienceYears != null && (
+                                <span className="text-[10px] text-muted-foreground">{doctor.experienceYears}yr exp</span>
+                              )}
+                              {doctor.consultationFee && (
+                                <span className="text-[10px] text-muted-foreground">₹{doctor.consultationFee}</span>
+                              )}
+                            </div>
+                          </div>
+                          <div className={`h-4 w-4 shrink-0 rounded-full border-2 ${
+                            isSelected ? 'border-primary bg-primary' : 'border-muted-foreground'
+                          }`} />
+                        </div>
                       </div>
-                      <div className={`h-4 w-4 shrink-0 rounded-full border-2 ${
-                        selectedDoctor === doctor.id
-                          ? 'border-primary bg-primary'
-                          : 'border-muted-foreground'
-                      }`} />
+
+                      {isSelected && (
+                        <div className="mt-2 rounded-lg border border-primary/20 bg-muted/30 p-3 sm:p-4 space-y-3 text-sm animate-in fade-in slide-in-from-top-2 duration-200">
+                          {doctor.bio && (
+                            <p className="text-muted-foreground text-xs leading-relaxed">{doctor.bio}</p>
+                          )}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {doctor.qualifications && (
+                              <div className="flex items-start gap-2">
+                                <GraduationCap className="h-3.5 w-3.5 mt-0.5 text-primary shrink-0" />
+                                <div>
+                                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Qualifications</p>
+                                  <p className="text-xs">{doctor.qualifications}</p>
+                                </div>
+                              </div>
+                            )}
+                            {doctor.experienceYears != null && (
+                              <div className="flex items-start gap-2">
+                                <Briefcase className="h-3.5 w-3.5 mt-0.5 text-primary shrink-0" />
+                                <div>
+                                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Experience</p>
+                                  <p className="text-xs">{doctor.experienceYears} years</p>
+                                </div>
+                              </div>
+                            )}
+                            {doctor.languages && (
+                              <div className="flex items-start gap-2">
+                                <Languages className="h-3.5 w-3.5 mt-0.5 text-primary shrink-0" />
+                                <div>
+                                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Languages</p>
+                                  <p className="text-xs">{doctor.languages}</p>
+                                </div>
+                              </div>
+                            )}
+                            {doctor.clinicAddress && (
+                              <div className="flex items-start gap-2">
+                                <MapPin className="h-3.5 w-3.5 mt-0.5 text-primary shrink-0" />
+                                <div>
+                                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Location</p>
+                                  <p className="text-xs">{doctor.clinicAddress}</p>
+                                </div>
+                              </div>
+                            )}
+                            {doctor.consultationFee && (
+                              <div className="flex items-start gap-2">
+                                <DollarSign className="h-3.5 w-3.5 mt-0.5 text-primary shrink-0" />
+                                <div>
+                                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Consultation Fee</p>
+                                  <p className="text-xs">₹{doctor.consultationFee}</p>
+                                </div>
+                              </div>
+                            )}
+                            {doctor.licenseNumber && (
+                              <div className="flex items-start gap-2">
+                                <BadgeCheck className="h-3.5 w-3.5 mt-0.5 text-primary shrink-0" />
+                                <div>
+                                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">License</p>
+                                  <p className="text-xs">{doctor.licenseNumber}</p>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          {doctor.availabilityStatus && (
+                            <Badge variant={doctor.availabilityStatus === 'AVAILABLE' ? 'default' : 'secondary'} className="text-[10px]">
+                              {doctor.availabilityStatus === 'AVAILABLE' ? '🟢 Available' : doctor.availabilityStatus}
+                            </Badge>
+                          )}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <p className="py-6 text-center text-sm text-muted-foreground">No doctors available at the moment.</p>

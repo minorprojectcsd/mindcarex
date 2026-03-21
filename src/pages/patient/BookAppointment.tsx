@@ -1,13 +1,14 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { Calendar, Clock, User, ArrowLeft, Loader2, Info } from 'lucide-react';
+import { Calendar, Clock, User, ArrowLeft, Loader2, Info, MapPin, BadgeCheck, Languages, DollarSign, Briefcase, GraduationCap } from 'lucide-react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { appointmentService, Doctor } from '@/services/appointmentService';
 import { Skeleton } from '@/components/ui/skeleton';

@@ -61,7 +61,7 @@ export default function VideoSession() {
   const [sessionDetails, setSessionDetails] = useState<SessionDetails | null>(null);
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [endingSession, setEndingSession] = useState(false);
-  const [chatOpen, setChatOpen] = useState(!isMobile);
+  const [chatOpen, setChatOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
   // Stream ready state — triggers analysis start

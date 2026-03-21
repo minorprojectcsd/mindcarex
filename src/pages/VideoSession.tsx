@@ -236,8 +236,9 @@ export default function VideoSession() {
       chunks = [];
       try {
         const result = await voiceAnalysisService.uploadChunk(voiceSid, blob);
+        console.log('[Voice] Chunk upload result:', result);
         setLatestChunk(result);
-        setStressHistory(prev => [...prev, Math.round(result.stress_score)]);
+        setStressHistory(prev => [...prev.slice(-20), Math.round(result.stress_score)]);
       } catch (e) {
         console.error('Chunk upload error:', e);
       }

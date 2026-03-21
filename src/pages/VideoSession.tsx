@@ -331,9 +331,7 @@ export default function VideoSession() {
 
   // Start analysis once we have stream + session details (doctor only)
   useEffect(() => {
-    console.log('[Analysis] Check:', { streamReady, hasSessionDetails: !!sessionDetails, userRole });
-    console.log('[Analysis] userRole from localStorage:', localStorage.getItem('role'));
-    const isDoctor = isDoctor || userRole === 'doctor' || userRole === 'Doctor';
+    console.log('[Analysis] Check:', { streamReady, hasSessionDetails: !!sessionDetails, userRole, isDoctor });
     if (streamReady && sessionDetails && isDoctor) {
       console.log('[Analysis] Starting voice + camera analysis...');
       startVoiceAnalysis();

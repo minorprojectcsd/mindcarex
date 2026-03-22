@@ -311,7 +311,14 @@ export default function VideoSession() {
     // Capture the REMOTE video (patient's face), not the local (doctor's) video
     const video = remoteVideoRef.current;
     const canvas = canvasRef.current;
-    if (!video || !canvas || video.videoWidth === 0) return;
+    if (!video || !canvas) {
+      console.log('[Camera] Skip frame: no video/canvas ref');
+      return;
+    }
+    if (video.videoWidth === 0 || video.readyState < 2) {
+      console.log('[Camera] Skip frame: remote video not ready yet (width:', video.videoWidth, 'readyState:', video.readyState, ')');
+      return;
+    }
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     const ctx = canvas.getContext('2d');

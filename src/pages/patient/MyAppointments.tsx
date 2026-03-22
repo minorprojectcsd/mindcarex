@@ -79,9 +79,10 @@ export default function MyAppointments() {
     }
   }, [error, navigate, toast]);
 
-  const scheduled = appointments?.filter(a => ['BOOKED', 'SCHEDULED'].includes(a.status)) || [];
+  const pending = appointments?.filter(a => a.status === 'PENDING') || [];
+  const confirmed = appointments?.filter(a => ['BOOKED', 'SCHEDULED', 'CONFIRMED'].includes(a.status)) || [];
   const inProgress = appointments?.filter(a => a.status === 'IN_PROGRESS') || [];
-  const active = [...inProgress, ...scheduled];
+  const active = [...inProgress, ...confirmed, ...pending];
   const completed = appointments?.filter(a => a.status === 'COMPLETED') || [];
   const cancelled = appointments?.filter(a => a.status === 'CANCELLED') || [];
 

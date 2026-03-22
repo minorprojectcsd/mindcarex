@@ -425,35 +425,87 @@ export default function VideoSession() {
     }
   };
 
-  const connectWebSocket = () => {
-    const client = new Client({
-      webSocketFactory: () => new SockJS(`${API_BASE}/ws`),
-      reconnectDelay: 5000,
-      heartbeatIncoming: 10000,
-      heartbeatOutgoing: 10000,
-      onConnect: () => {
-        setIsConnected(true);
-        client.subscribe(`/topic/chat/${sessionId}`, (msg) => {
-          setMessages((prev) => [...prev, JSON.parse(msg.body)]);
-        });
-        client.subscribe(`/topic/signal/${sessionId}`, (msg) => {
-          const signal = JSON.parse(msg.body);
-          if (signal.from === userId) return;
-          handleSignal(signal);
-        });
-        if (isDoctor) {
-          // Create offer and also listen for patient join to re-offer
-          setTimeout(createOffer, 1000);
-        } else {
-          // Patient: notify doctor to send a new offer
+const connectWebSocket = () => {
+  const client = new Client({
+    webSocketFactory: () => new SockJS(`${API_BASE}/ws`),
+    reconnectDelay: 5000,
+    heartbeatIncoming: 10000,
+    heartbeatOutgoing: 10000,
+    onConnect: () => {
+      console.log('[WebSocket] Connected');
+      setIsConnected(true);
+      
+      // Subscribe to chat
+      client.subscribe(`/topic/chat/${sessionId}`, (msg) => {
+        setMessages((prev) => [...prev, JSON.parse(msg.body)]);
+      });
+      
+      // Subscribe to signaling
+      client.subscribe(`/topic/signal/${sessionId}`, (msg) => {
+        const signal = JSON.parse(msg.body);
+        if (signal.from === userId) return;
+        handleSignal(signal);
+      });
+      
+      if (isDoctor) {
+        // 🔥 DOCTOR: Wait for subscriptions to settle, then create offer
+        console.log('[WebRTC] Doctor ready - creating offer...');
+        setTimeout(createOffer, 1500);
+      } else {
+        // 🔥 PATIENT: Retry join signal until connected
+        console.log('[WebRTC] Patient ready - sending join signals...');
+        
+        let joinAttempts = 0;
+        const maxAttempts = 15;
+        
+        const sendJoinWithRetry = () => {
+          const pc = peerConnectionRef.current;
+          if (!pc) return;
+          
+          // Stop if connected
+          if (pc.connectionState === 'connected') {
+            console.log('[WebRTC] ✅ Connected! Stopping retry.');
+            return;
+          }
+          
+          // Stop if we have remote description (got offer)
+          if (pc.remoteDescription) {
+            console.log('[WebRTC] ✅ Got offer! Stopping retry.');
+            return;
+          }
+          
+          // Max attempts reached
+          if (joinAttempts >= maxAttempts) {
+            console.error('[WebRTC] ❌ Max join attempts reached');
+            toast({ 
+              title: 'Connection timeout', 
+              description: 'Doctor may not be in session. Please refresh.',
+              variant: 'destructive' 
+            });
+            return;
+          }
+          
+          joinAttempts++;
+          console.log(`[WebRTC] 📡 Sending join signal (attempt ${joinAttempts}/${maxAttempts})`);
           sendSignal({ type: 'join', from: userId });
-        }
-      },
-      onDisconnect: () => setIsConnected(false),
-    });
-    client.activate();
-    stompClientRef.current = client;
-  };
+          
+          // Retry after 2 seconds
+          setTimeout(sendJoinWithRetry, 2000);
+        };
+        
+        // Start retry loop after small delay to let subscriptions settle
+        setTimeout(sendJoinWithRetry, 500);
+      }
+    },
+    onDisconnect: () => {
+      console.log('[WebSocket] Disconnected');
+      setIsConnected(false);
+    },
+  });
+  
+  client.activate();
+  stompClientRef.current = client;
+};
 
   const createOffer = async () => {
     const pc = peerConnectionRef.current;

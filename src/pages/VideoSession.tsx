@@ -330,15 +330,27 @@ export default function VideoSession() {
     }, 'image/jpeg', 0.7);
   };
 
-  // Start analysis once we have stream + session details (doctor only)
+  // Start VOICE analysis when local stream is ready (doctor only)
   useEffect(() => {
-    console.log('[Analysis] Check:', { streamReady, hasSessionDetails: !!sessionDetails, userRole, isDoctor });
+    console.log('[Analysis] Voice check:', { streamReady, hasSessionDetails: !!sessionDetails, isDoctor });
     if (streamReady && sessionDetails && isDoctor) {
-      console.log('[Analysis] Starting voice + camera analysis...');
+      console.log('[Analysis] Starting voice analysis...');
       startVoiceAnalysis();
-      startCameraAnalysis();
     }
-  }, [streamReady, sessionDetails, startVoiceAnalysis, startCameraAnalysis, userRole]);
+  }, [streamReady, sessionDetails, startVoiceAnalysis, userRole]);
+
+  // Start CAMERA analysis only when remote video (patient) is available (doctor only)
+  useEffect(() => {
+    console.log('[Analysis] Camera check:', { hasRemoteVideo, hasSessionDetails: !!sessionDetails, isDoctor, cameraActive });
+    if (hasRemoteVideo && sessionDetails && isDoctor && !cameraActive) {
+      // Wait a moment for the remote video to have actual frames
+      const timer = setTimeout(() => {
+        console.log('[Analysis] Remote video ready — starting camera analysis on patient feed...');
+        startCameraAnalysis();
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [hasRemoteVideo, sessionDetails, startCameraAnalysis, userRole, cameraActive]);
 
   const initConnection = async () => {
     try {

@@ -77,4 +77,24 @@ export const appointmentService = {
     const response = await api.post(`/api/appointments/${appointmentId}/cancel`);
     return response.data;
   },
+
+  async confirmAppointment(appointmentId: string): Promise<any> {
+    const response = await api.post(`/api/appointments/${appointmentId}/confirm`);
+    return response.data;
+  },
+
+  async rejectAppointment(appointmentId: string, reason: string): Promise<any> {
+    const response = await api.post(`/api/appointments/${appointmentId}/reject`, { reason });
+    return response.data;
+  },
+
+  async getDoctorDashboard(): Promise<{ doctorName: string; pendingAppointments: number; confirmedAppointments: number; completedSessions: number }> {
+    const response = await api.get('/api/doctor/dashboard');
+    return response.data;
+  },
+
+  async getDoctorPending(): Promise<any[]> {
+    const response = await api.get('/api/doctor/pending');
+    return response.data;
+  },
 };

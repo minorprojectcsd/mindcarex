@@ -685,6 +685,9 @@ export default function VideoSession() {
     </div>
   );
 
+  // Extract patient details for doctor view
+  const patientDetails = sessionDetails?.appointment?.patient;
+
   return (
     <div className="flex h-[100dvh] flex-col bg-background text-foreground">
       {/* Header */}
@@ -711,6 +714,27 @@ export default function VideoSession() {
       {isDoctor && (
         <div className="flex sm:hidden items-center justify-center gap-1 border-b border-border py-1">
           <ModuleStatus />
+        </div>
+      )}
+
+      {/* Patient details bar — doctor only */}
+      {isDoctor && patientDetails && (
+        <div className="flex items-center gap-3 border-b border-border bg-muted/30 px-3 py-1.5 text-xs overflow-x-auto">
+          <div className="flex items-center gap-1.5 shrink-0">
+            <User className="h-3.5 w-3.5 text-primary" />
+            <span className="font-semibold text-foreground">{getParticipantName(patientDetails)}</span>
+          </div>
+          {(patientDetails as any).age && (
+            <span className="text-muted-foreground shrink-0">Age: {(patientDetails as any).age}</span>
+          )}
+          {(patientDetails as any).gender && (
+            <span className="text-muted-foreground shrink-0">Gender: {(patientDetails as any).gender}</span>
+          )}
+          {(patientDetails as any).notes && (
+            <span className="text-muted-foreground truncate max-w-[200px]" title={(patientDetails as any).notes}>
+              Notes: {(patientDetails as any).notes}
+            </span>
+          )}
         </div>
       )}
 

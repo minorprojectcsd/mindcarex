@@ -25,7 +25,7 @@ export interface PatientAppointment {
   };
   startTime: string;
   endTime?: string;
-  status: 'BOOKED' | 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+  status: 'PENDING' | 'BOOKED' | 'SCHEDULED' | 'CONFIRMED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
   sessionId?: string | null;
   sessionStatus?: string | null;
   notes?: string;

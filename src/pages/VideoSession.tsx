@@ -311,7 +311,14 @@ export default function VideoSession() {
     // Capture the REMOTE video (patient's face), not the local (doctor's) video
     const video = remoteVideoRef.current;
     const canvas = canvasRef.current;
-    if (!video || !canvas || video.videoWidth === 0) return;
+    if (!video || !canvas) {
+      console.log('[Camera] Skip frame: no video/canvas ref');
+      return;
+    }
+    if (video.videoWidth === 0 || video.readyState < 2) {
+      console.log('[Camera] Skip frame: remote video not ready yet (width:', video.videoWidth, 'readyState:', video.readyState, ')');
+      return;
+    }
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     const ctx = canvas.getContext('2d');
@@ -330,15 +337,27 @@ export default function VideoSession() {
     }, 'image/jpeg', 0.7);
   };
 
-  // Start analysis once we have stream + session details (doctor only)
+  // Start VOICE analysis when local stream is ready (doctor only)
   useEffect(() => {
-    console.log('[Analysis] Check:', { streamReady, hasSessionDetails: !!sessionDetails, userRole, isDoctor });
+    console.log('[Analysis] Voice check:', { streamReady, hasSessionDetails: !!sessionDetails, isDoctor });
     if (streamReady && sessionDetails && isDoctor) {
-      console.log('[Analysis] Starting voice + camera analysis...');
+      console.log('[Analysis] Starting voice analysis...');
       startVoiceAnalysis();
-      startCameraAnalysis();
     }
-  }, [streamReady, sessionDetails, startVoiceAnalysis, startCameraAnalysis, userRole]);
+  }, [streamReady, sessionDetails, startVoiceAnalysis, userRole]);
+
+  // Start CAMERA analysis only when remote video (patient) is available (doctor only)
+  useEffect(() => {
+    console.log('[Analysis] Camera check:', { hasRemoteVideo, hasSessionDetails: !!sessionDetails, isDoctor, cameraActive });
+    if (hasRemoteVideo && sessionDetails && isDoctor && !cameraActive) {
+      // Wait a moment for the remote video to have actual frames
+      const timer = setTimeout(() => {
+        console.log('[Analysis] Remote video ready — starting camera analysis on patient feed...');
+        startCameraAnalysis();
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [hasRemoteVideo, sessionDetails, startCameraAnalysis, userRole, cameraActive]);
 
   const initConnection = async () => {
     try {

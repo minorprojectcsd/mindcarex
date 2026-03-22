@@ -308,7 +308,8 @@ export default function VideoSession() {
   }, [sessionId]);
 
   const captureAndSendFrame = async (camSid: string) => {
-    const video = localVideoRef.current;
+    // Capture the REMOTE video (patient's face), not the local (doctor's) video
+    const video = remoteVideoRef.current;
     const canvas = canvasRef.current;
     if (!video || !canvas || video.videoWidth === 0) return;
     canvas.width = video.videoWidth;
@@ -352,15 +353,26 @@ export default function VideoSession() {
 
       const pc = new RTCPeerConnection({
         iceServers: [
-          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:stun.relay.metered.ca:80' },
           {
-            urls: [
-              'turn:openrelay.metered.ca:80?transport=tcp',
-              'turn:openrelay.metered.ca:443?transport=tcp',
-              'turns:openrelay.metered.ca:443?transport=tcp',
-            ],
-            username: 'openrelayproject',
-            credential: 'openrelayproject',
+            urls: 'turn:global.relay.metered.ca:80',
+            username: '8b43f04793ec71a11630f325',
+            credential: '8wXONGOcqyYKYdQ8',
+          },
+          {
+            urls: 'turn:global.relay.metered.ca:80?transport=tcp',
+            username: '8b43f04793ec71a11630f325',
+            credential: '8wXONGOcqyYKYdQ8',
+          },
+          {
+            urls: 'turn:global.relay.metered.ca:443',
+            username: '8b43f04793ec71a11630f325',
+            credential: '8wXONGOcqyYKYdQ8',
+          },
+          {
+            urls: 'turns:global.relay.metered.ca:443?transport=tcp',
+            username: '8b43f04793ec71a11630f325',
+            credential: '8wXONGOcqyYKYdQ8',
           },
         ],
       });
@@ -673,6 +685,9 @@ export default function VideoSession() {
     </div>
   );
 
+  // Extract patient details for doctor view
+  const patientDetails = sessionDetails?.appointment?.patient;
+
   return (
     <div className="flex h-[100dvh] flex-col bg-background text-foreground">
       {/* Header */}
@@ -699,6 +714,27 @@ export default function VideoSession() {
       {isDoctor && (
         <div className="flex sm:hidden items-center justify-center gap-1 border-b border-border py-1">
           <ModuleStatus />
+        </div>
+      )}
+
+      {/* Patient details bar — doctor only */}
+      {isDoctor && patientDetails && (
+        <div className="flex items-center gap-3 border-b border-border bg-muted/30 px-3 py-1.5 text-xs overflow-x-auto">
+          <div className="flex items-center gap-1.5 shrink-0">
+            <User className="h-3.5 w-3.5 text-primary" />
+            <span className="font-semibold text-foreground">{getParticipantName(patientDetails)}</span>
+          </div>
+          {(patientDetails as any).age && (
+            <span className="text-muted-foreground shrink-0">Age: {(patientDetails as any).age}</span>
+          )}
+          {(patientDetails as any).gender && (
+            <span className="text-muted-foreground shrink-0">Gender: {(patientDetails as any).gender}</span>
+          )}
+          {(patientDetails as any).notes && (
+            <span className="text-muted-foreground truncate max-w-[200px]" title={(patientDetails as any).notes}>
+              Notes: {(patientDetails as any).notes}
+            </span>
+          )}
         </div>
       )}
 

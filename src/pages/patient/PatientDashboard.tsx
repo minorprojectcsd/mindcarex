@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
 import { appointmentService, PatientAppointment } from '@/services/appointmentService';
-import { Badge } from '@/components/ui/badge';
+import { AppointmentStatusBadge } from '@/components/appointments/AppointmentStatusBadge';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function PatientDashboard() {
@@ -21,7 +21,7 @@ export default function PatientDashboard() {
     refetchInterval: 10000,
   });
 
-  const active = appointments?.filter(a => ['BOOKED', 'SCHEDULED', 'IN_PROGRESS'].includes(a.status)) || [];
+  const active = appointments?.filter(a => ['PENDING', 'BOOKED', 'SCHEDULED', 'CONFIRMED', 'IN_PROGRESS'].includes(a.status)) || [];
   const completed = appointments?.filter(a => a.status === 'COMPLETED') || [];
 
   return (
@@ -78,6 +78,8 @@ export default function PatientDashboard() {
               <div className="space-y-4">
                 {active.slice(0, 3).map((apt: PatientAppointment) => {
                   const isLive = apt.status === 'IN_PROGRESS';
+                  const isConfirmed = ['CONFIRMED', 'BOOKED', 'SCHEDULED'].includes(apt.status);
+                  const isPending = apt.status === 'PENDING';
                   return (
                     <div key={apt.id} className="flex items-center justify-between rounded-lg border p-4">
                       <div>
@@ -87,19 +89,21 @@ export default function PatientDashboard() {
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Badge variant={isLive ? 'default' : 'secondary'}>
-                          {isLive ? '🟢 Live' : apt.status}
-                        </Badge>
-                        {isLive ? (
+                        <AppointmentStatusBadge status={apt.status} />
+                        {isLive && (
                           <Button size="sm" onClick={() => navigate(`/video/${apt.sessionId || apt.id}`)}>
                             <Video className="mr-1 h-3 w-3" />
                             Join Now
                           </Button>
-                        ) : (
+                        )}
+                        {isConfirmed && !isLive && (
                           <Button size="sm" variant="outline" onClick={() => navigate(`/video/${apt.id}`)}>
                             <Video className="mr-1 h-3 w-3" />
                             Join
                           </Button>
+                        )}
+                        {isPending && (
+                          <span className="text-xs text-muted-foreground">Awaiting confirmation</span>
                         )}
                       </div>
                     </div>

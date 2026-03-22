@@ -25,7 +25,7 @@ export interface PatientAppointment {
   };
   startTime: string;
   endTime?: string;
-  status: 'BOOKED' | 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+  status: 'PENDING' | 'BOOKED' | 'SCHEDULED' | 'CONFIRMED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
   sessionId?: string | null;
   sessionStatus?: string | null;
   notes?: string;
@@ -40,7 +40,7 @@ export interface DoctorAppointment {
   };
   startTime: string;
   endTime?: string;
-  status: 'BOOKED' | 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
+  status: 'PENDING' | 'BOOKED' | 'SCHEDULED' | 'CONFIRMED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
   sessionId?: string | null;
   sessionStatus?: string | null;
   notes?: string;
@@ -75,6 +75,26 @@ export const appointmentService = {
 
   async cancelAppointment(appointmentId: string): Promise<any> {
     const response = await api.post(`/api/appointments/${appointmentId}/cancel`);
+    return response.data;
+  },
+
+  async confirmAppointment(appointmentId: string): Promise<any> {
+    const response = await api.post(`/api/appointments/${appointmentId}/confirm`);
+    return response.data;
+  },
+
+  async rejectAppointment(appointmentId: string, reason: string): Promise<any> {
+    const response = await api.post(`/api/appointments/${appointmentId}/reject`, { reason });
+    return response.data;
+  },
+
+  async getDoctorDashboard(): Promise<{ doctorName: string; pendingAppointments: number; confirmedAppointments: number; completedSessions: number }> {
+    const response = await api.get('/api/doctor/dashboard');
+    return response.data;
+  },
+
+  async getDoctorPending(): Promise<any[]> {
+    const response = await api.get('/api/doctor/pending');
     return response.data;
   },
 };

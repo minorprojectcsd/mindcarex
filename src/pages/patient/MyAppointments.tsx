@@ -1,13 +1,13 @@
 import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { Calendar, ArrowLeft, Video, XCircle, Mail, MessageSquare } from 'lucide-react';
+import { Calendar, ArrowLeft, Video, XCircle, MessageSquare } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { AppointmentStatusBadge } from '@/components/appointments/AppointmentStatusBadge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { appointmentService, PatientAppointment } from '@/services/appointmentService';
@@ -79,19 +79,20 @@ export default function MyAppointments() {
     }
   }, [error, navigate, toast]);
 
-  const scheduled = appointments?.filter(a => ['BOOKED', 'SCHEDULED'].includes(a.status)) || [];
+  const pending = appointments?.filter(a => a.status === 'PENDING') || [];
+  const confirmed = appointments?.filter(a => ['BOOKED', 'SCHEDULED', 'CONFIRMED'].includes(a.status)) || [];
   const inProgress = appointments?.filter(a => a.status === 'IN_PROGRESS') || [];
-  const active = [...inProgress, ...scheduled];
+  const active = [...inProgress, ...confirmed, ...pending];
   const completed = appointments?.filter(a => a.status === 'COMPLETED') || [];
   const cancelled = appointments?.filter(a => a.status === 'CANCELLED') || [];
 
   const AppointmentCard = ({ appointment }: { appointment: PatientAppointment }) => {
     const isLive = appointment.status === 'IN_PROGRESS';
-    const isBooked = ['BOOKED', 'SCHEDULED'].includes(appointment.status);
+    const isPending = appointment.status === 'PENDING';
+    const isConfirmed = ['BOOKED', 'SCHEDULED', 'CONFIRMED'].includes(appointment.status);
 
     return (
       <div className="flex flex-col gap-3 rounded-lg border border-border p-3 sm:p-4">
-        {/* Info row */}
         <div className="min-w-0">
           <p className="font-medium text-sm sm:text-base truncate">Dr. {appointment.doctor?.name || 'Doctor'}</p>
           {appointment.doctor?.specialization && (
@@ -99,35 +100,48 @@ export default function MyAppointments() {
           )}
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
             {format(new Date(appointment.startTime), 'EEE, MMM d, yyyy · h:mm a')}
-            {appointment.endTime && (
-              <> — {format(new Date(appointment.endTime), 'h:mm a')}</>
-            )}
+            {appointment.endTime && <> — {format(new Date(appointment.endTime), 'h:mm a')}</>}
           </p>
         </div>
 
-        {/* Actions row */}
         <div className="flex flex-wrap items-center gap-2">
-          <Badge
-            variant={
-              isLive ? 'default' :
-              isBooked ? 'secondary' :
-              appointment.status === 'COMPLETED' ? 'outline' :
-              'destructive'
-            }
-            className="text-xs"
-          >
-            {isLive ? '🟢 Live' : appointment.status}
-          </Badge>
-          {(isBooked || appointment.status === 'COMPLETED') && (
-            <span title="Email confirmation sent">
-              <Mail className="h-3.5 w-3.5 text-muted-foreground" />
-            </span>
+          <AppointmentStatusBadge status={appointment.status} />
+
+          {isPending && (
+            <div className="flex items-center gap-2 w-full sm:w-auto mt-1 sm:mt-0">
+              <span className="text-xs text-muted-foreground flex-1">Awaiting doctor confirmation</span>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive h-8 w-8 p-0">
+                    <XCircle className="h-4 w-4" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent className="mx-4 max-w-[calc(100vw-2rem)] sm:mx-auto sm:max-w-lg">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Cancel Request?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This will cancel your appointment request with Dr. {appointment.doctor?.name}.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
+                    <AlertDialogCancel className="w-full sm:w-auto">Keep</AlertDialogCancel>
+                    <AlertDialogAction
+                      className="w-full sm:w-auto bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      onClick={() => cancelMutation.mutate(appointment.id)}
+                    >
+                      Cancel Request
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
           )}
+
           {isLive && appointment.sessionId && (
             <div className="flex gap-2 w-full sm:w-auto mt-1 sm:mt-0">
               <Button size="sm" className="flex-1 sm:flex-initial text-xs" onClick={() => navigate(`/video/${appointment.sessionId}`)}>
                 <Video className="mr-1 h-3 w-3" />
-                Video
+                Join Now
               </Button>
               <Button size="sm" variant="outline" className="flex-1 sm:flex-initial text-xs" onClick={() => navigate(`/chat-session/${appointment.sessionId}`)}>
                 <MessageSquare className="mr-1 h-3 w-3" />
@@ -138,9 +152,13 @@ export default function MyAppointments() {
           {isLive && !appointment.sessionId && (
             <span className="text-xs text-muted-foreground">Session starting…</span>
           )}
-          {isBooked && (
+
+          {isConfirmed && (
             <div className="flex items-center gap-2 w-full sm:w-auto mt-1 sm:mt-0">
-              <span className="text-xs text-muted-foreground flex-1">Waiting for doctor</span>
+              <Button size="sm" variant="outline" className="flex-1 sm:flex-initial text-xs" onClick={() => navigate(`/video/${appointment.id}`)}>
+                <Video className="mr-1 h-3 w-3" />
+                Join
+              </Button>
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive h-8 w-8 p-0">

@@ -1,14 +1,16 @@
+import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { Calendar, ArrowLeft, Video, XCircle, MessageSquare } from 'lucide-react';
+import { Calendar, ArrowLeft, Video, XCircle, MessageSquare, Check, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { appointmentService, DoctorAppointment } from '@/services/appointmentService';
+import { AppointmentStatusBadge } from '@/components/appointments/AppointmentStatusBadge';
+import { DeclineModal } from '@/components/appointments/DeclineModal';
 import { sessionService } from '@/services/sessionService';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -27,6 +29,7 @@ export default function DoctorAppointments() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [declineTarget, setDeclineTarget] = useState<DoctorAppointment | null>(null);
 
   const { data: appointments, isLoading } = useQuery({
     queryKey: ['doctor-appointments'],
@@ -36,38 +39,60 @@ export default function DoctorAppointments() {
 
   const startSessionMutation = useMutation({
     mutationFn: (appointmentId: string) => sessionService.startSession(appointmentId),
-    onSuccess: (data) => {
-      navigate(`/video/${data.sessionId}`);
-    },
+    onSuccess: (data) => navigate(`/video/${data.sessionId}`),
     onError: (error: any) => {
-      toast({
-        title: 'Failed to start session',
-        description: error?.response?.data?.message || 'Could not start the session.',
-        variant: 'destructive',
-      });
+      toast({ title: 'Failed to start session', description: error?.response?.data?.message || 'Could not start the session.', variant: 'destructive' });
     },
+  });
+
+  const confirmMutation = useMutation({
+    mutationFn: (id: string) => appointmentService.confirmAppointment(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['doctor-appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['doctor-dashboard'] });
+      toast({ title: 'Appointment Confirmed', description: 'The patient has been notified.' });
+    },
+    onError: () => toast({ title: 'Failed', description: 'Could not confirm appointment.', variant: 'destructive' }),
+  });
+
+  const rejectMutation = useMutation({
+    mutationFn: ({ id, reason }: { id: string; reason: string }) => appointmentService.rejectAppointment(id, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['doctor-appointments'] });
+      queryClient.invalidateQueries({ queryKey: ['doctor-dashboard'] });
+      setDeclineTarget(null);
+      toast({ title: 'Appointment Declined', description: 'The patient has been notified.' });
+    },
+    onError: () => toast({ title: 'Failed', description: 'Could not decline appointment.', variant: 'destructive' }),
   });
 
   const cancelMutation = useMutation({
     mutationFn: (id: string) => appointmentService.cancelAppointment(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['doctor-appointments'] });
-      toast({ title: 'Appointment Cancelled', description: 'The appointment has been cancelled.' });
+      toast({ title: 'Appointment Cancelled' });
     },
-    onError: () => {
-      toast({ title: 'Failed', description: 'Could not cancel appointment.', variant: 'destructive' });
-    },
+    onError: () => toast({ title: 'Failed', description: 'Could not cancel appointment.', variant: 'destructive' }),
   });
 
-  const scheduled = appointments?.filter(a => ['SCHEDULED', 'BOOKED'].includes(a.status)) || [];
-  const inProgress = appointments?.filter(a => a.status === 'IN_PROGRESS') || [];
-  const active = [...inProgress, ...scheduled];
-  const completed = appointments?.filter(a => a.status === 'COMPLETED') || [];
-  const cancelled = appointments?.filter(a => a.status === 'CANCELLED') || [];
+  // Sort: PENDING first, then by date
+  const sortedAppointments = [...(appointments || [])].sort((a, b) => {
+    if (a.status === 'PENDING' && b.status !== 'PENDING') return -1;
+    if (b.status === 'PENDING' && a.status !== 'PENDING') return 1;
+    return new Date(a.startTime).getTime() - new Date(b.startTime).getTime();
+  });
+
+  const pending = sortedAppointments.filter(a => a.status === 'PENDING');
+  const confirmed = sortedAppointments.filter(a => ['CONFIRMED', 'SCHEDULED', 'BOOKED'].includes(a.status));
+  const inProgress = sortedAppointments.filter(a => a.status === 'IN_PROGRESS');
+  const active = [...pending, ...inProgress, ...confirmed];
+  const completed = sortedAppointments.filter(a => a.status === 'COMPLETED');
+  const cancelled = sortedAppointments.filter(a => a.status === 'CANCELLED');
 
   const AppointmentCard = ({ appointment }: { appointment: DoctorAppointment }) => {
     const isLive = appointment.status === 'IN_PROGRESS';
-    const isBooked = ['BOOKED', 'SCHEDULED'].includes(appointment.status);
+    const isPending = appointment.status === 'PENDING';
+    const isConfirmed = ['BOOKED', 'SCHEDULED', 'CONFIRMED'].includes(appointment.status);
 
     return (
       <div className="flex flex-col gap-3 rounded-lg border border-border p-3 sm:p-4">
@@ -75,23 +100,38 @@ export default function DoctorAppointments() {
           <p className="font-medium text-sm sm:text-base truncate">{appointment.patient?.fullName || appointment.patient?.name || 'Patient'}</p>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
             {format(new Date(appointment.startTime), 'EEE, MMM d, yyyy · h:mm a')}
-            {appointment.endTime && (
-              <> — {format(new Date(appointment.endTime), 'h:mm a')}</>
-            )}
+            {appointment.endTime && <> — {format(new Date(appointment.endTime), 'h:mm a')}</>}
           </p>
+          {appointment.notes && (
+            <p className="text-xs text-muted-foreground mt-1 italic">"{appointment.notes}"</p>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Badge
-            variant={
-              isLive ? 'default' :
-              isBooked ? 'secondary' :
-              appointment.status === 'COMPLETED' ? 'outline' :
-              'destructive'
-            }
-            className="text-xs"
-          >
-            {isLive ? '🟢 Live' : appointment.status}
-          </Badge>
+          <AppointmentStatusBadge status={appointment.status} />
+
+          {isPending && (
+            <div className="flex gap-2 w-full sm:w-auto mt-1 sm:mt-0">
+              <Button
+                size="sm"
+                className="flex-1 sm:flex-initial text-xs bg-green-600 hover:bg-green-700 text-white"
+                disabled={confirmMutation.isPending}
+                onClick={() => confirmMutation.mutate(appointment.id)}
+              >
+                <Check className="mr-1 h-3 w-3" />
+                Confirm
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                className="flex-1 sm:flex-initial text-xs"
+                onClick={() => setDeclineTarget(appointment)}
+              >
+                <X className="mr-1 h-3 w-3" />
+                Decline
+              </Button>
+            </div>
+          )}
+
           {isLive && (
             <div className="flex gap-2 w-full sm:w-auto mt-1 sm:mt-0">
               <Button size="sm" className="flex-1 sm:flex-initial text-xs" onClick={() => navigate(`/video/${appointment.sessionId || appointment.id}`)}>
@@ -104,7 +144,8 @@ export default function DoctorAppointments() {
               </Button>
             </div>
           )}
-          {isBooked && (
+
+          {isConfirmed && (
             <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto mt-1 sm:mt-0">
               <Button
                 size="sm"
@@ -161,7 +202,9 @@ export default function DoctorAppointments() {
 
         <Tabs defaultValue="active">
           <TabsList className="w-full grid grid-cols-3">
-            <TabsTrigger value="active" className="text-xs sm:text-sm">Active ({active.length})</TabsTrigger>
+            <TabsTrigger value="active" className="text-xs sm:text-sm">
+              Active ({active.length}){pending.length > 0 && ` · ${pending.length} new`}
+            </TabsTrigger>
             <TabsTrigger value="completed" className="text-xs sm:text-sm">Done ({completed.length})</TabsTrigger>
             <TabsTrigger value="cancelled" className="text-xs sm:text-sm">Cancelled ({cancelled.length})</TabsTrigger>
           </TabsList>
@@ -196,6 +239,14 @@ export default function DoctorAppointments() {
           })}
         </Tabs>
       </div>
+
+      <DeclineModal
+        open={!!declineTarget}
+        onClose={() => setDeclineTarget(null)}
+        onConfirm={(reason) => declineTarget && rejectMutation.mutate({ id: declineTarget.id, reason })}
+        loading={rejectMutation.isPending}
+        patientName={declineTarget?.patient?.fullName || declineTarget?.patient?.name}
+      />
     </DashboardLayout>
   );
 }

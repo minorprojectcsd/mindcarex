@@ -308,7 +308,8 @@ export default function VideoSession() {
   }, [sessionId]);
 
   const captureAndSendFrame = async (camSid: string) => {
-    const video = localVideoRef.current;
+    // Capture the REMOTE video (patient's face), not the local (doctor's) video
+    const video = remoteVideoRef.current;
     const canvas = canvasRef.current;
     if (!video || !canvas || video.videoWidth === 0) return;
     canvas.width = video.videoWidth;

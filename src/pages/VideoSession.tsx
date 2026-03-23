@@ -473,15 +473,24 @@ const connectWebSocket = () => {
         // 🔥 PATIENT: Retry join signal until connected
         console.log('[WebRTC] Patient ready - sending join signals...');
         
+        // Cancel any previous retry loop
+        joinRetryRef.current++;
+        const myGeneration = joinRetryRef.current;
         let joinAttempts = 0;
         const maxAttempts = 15;
         
         const sendJoinWithRetry = () => {
+          // Bail if this loop was superseded by a newer one
+          if (joinRetryRef.current !== myGeneration) {
+            console.log('[WebRTC] Stale retry loop cancelled');
+            return;
+          }
+          
           const pc = peerConnectionRef.current;
           if (!pc) return;
           
           // Stop if connected
-          if (pc.connectionState === 'connected') {
+          if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed' || pc.connectionState === 'connected') {
             console.log('[WebRTC] ✅ Connected! Stopping retry.');
             return;
           }
@@ -497,7 +506,7 @@ const connectWebSocket = () => {
             console.error('[WebRTC] ❌ Max join attempts reached');
             toast({ 
               title: 'Connection timeout', 
-              description: 'Doctor may not be in session. Please refresh.',
+              description: 'Doctor may not be in session yet. Try leaving and rejoining.',
               variant: 'destructive' 
             });
             return;

@@ -4,8 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import {
   LayoutDashboard, Calendar, Video, Users, Settings, LogOut, Shield,
-  Sun, Moon, Menu, MessageSquareText, ScanFace, AudioLines, FileText,
-  Bell, UserCircle, History,
+  Sun, Moon, Menu, MessageSquareText, Bell, UserCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTheme } from 'next-themes';

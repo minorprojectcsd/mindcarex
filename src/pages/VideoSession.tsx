@@ -35,6 +35,7 @@ export default function VideoSession() {
   const localStreamRef = useRef<MediaStream | null>(null);
   const stompClientRef = useRef<Client | null>(null);
   const pendingCandidatesRef = useRef<RTCIceCandidateInit[]>([]);
+  const joinRetryRef = useRef<number>(0); // incremented to cancel stale retry loops
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   // Voice analysis refs
@@ -138,9 +139,14 @@ export default function VideoSession() {
     }
   }, [messages.length, chatOpen]);
 
-  // Fetch session details with retry for patients who may get 403 initially
+  // Fetch session details — only doctors need this (for analysis).
+  // Patients get 403 from backend, so skip to avoid logout loop.
   useEffect(() => {
     if (!sessionId) return;
+    if (!isDoctor) {
+      console.log('[Session] Skipping session details fetch for non-doctor role');
+      return;
+    }
     let cancelled = false;
     let attempt = 0;
     const maxRetries = 5;
@@ -149,7 +155,7 @@ export default function VideoSession() {
         .then(details => { if (!cancelled) setSessionDetails(details); })
         .catch((e) => {
           console.log(`Session fetch attempt ${attempt + 1} failed:`, e?.response?.status || e.message);
-          if (!cancelled && e?.response?.status === 403 && attempt < maxRetries) {
+          if (!cancelled && attempt < maxRetries) {
             attempt++;
             setTimeout(fetchDetails, 2000 * attempt);
           }
@@ -157,8 +163,7 @@ export default function VideoSession() {
     };
     fetchDetails();
     return () => { cancelled = true; };
-  }, [sessionId]);
-
+  }, [sessionId, isDoctor]);
   useEffect(() => {
     if (!sessionId) return;
     initConnection();
@@ -468,15 +473,24 @@ const connectWebSocket = () => {
         // 🔥 PATIENT: Retry join signal until connected
         console.log('[WebRTC] Patient ready - sending join signals...');
         
+        // Cancel any previous retry loop
+        joinRetryRef.current++;
+        const myGeneration = joinRetryRef.current;
         let joinAttempts = 0;
         const maxAttempts = 15;
         
         const sendJoinWithRetry = () => {
+          // Bail if this loop was superseded by a newer one
+          if (joinRetryRef.current !== myGeneration) {
+            console.log('[WebRTC] Stale retry loop cancelled');
+            return;
+          }
+          
           const pc = peerConnectionRef.current;
           if (!pc) return;
           
           // Stop if connected
-          if (pc.connectionState === 'connected') {
+          if (pc.iceConnectionState === 'connected' || pc.iceConnectionState === 'completed' || pc.connectionState === 'connected') {
             console.log('[WebRTC] ✅ Connected! Stopping retry.');
             return;
           }
@@ -492,7 +506,7 @@ const connectWebSocket = () => {
             console.error('[WebRTC] ❌ Max join attempts reached');
             toast({ 
               title: 'Connection timeout', 
-              description: 'Doctor may not be in session. Please refresh.',
+              description: 'Doctor may not be in session yet. Try leaving and rejoining.',
               variant: 'destructive' 
             });
             return;

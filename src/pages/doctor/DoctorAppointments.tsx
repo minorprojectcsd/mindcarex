@@ -47,32 +47,65 @@ export default function DoctorAppointments() {
 
   const confirmMutation = useMutation({
     mutationFn: (id: string) => appointmentService.confirmAppointment(id),
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ['doctor-appointments'] });
+      const prev = queryClient.getQueryData<DoctorAppointment[]>(['doctor-appointments']);
+      queryClient.setQueryData<DoctorAppointment[]>(['doctor-appointments'], old =>
+        old?.map(a => a.id === id ? { ...a, status: 'CONFIRMED' as const } : a) ?? []
+      );
+      return { prev };
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['doctor-appointments'] });
       queryClient.invalidateQueries({ queryKey: ['doctor-dashboard'] });
       toast({ title: 'Appointment Confirmed', description: 'The patient has been notified.' });
     },
-    onError: () => toast({ title: 'Failed', description: 'Could not confirm appointment.', variant: 'destructive' }),
+    onError: (_err, _id, context) => {
+      if (context?.prev) queryClient.setQueryData(['doctor-appointments'], context.prev);
+      toast({ title: 'Failed', description: 'Could not confirm appointment.', variant: 'destructive' });
+    },
   });
 
   const rejectMutation = useMutation({
     mutationFn: ({ id, reason }: { id: string; reason: string }) => appointmentService.rejectAppointment(id, reason),
+    onMutate: async ({ id }) => {
+      await queryClient.cancelQueries({ queryKey: ['doctor-appointments'] });
+      const prev = queryClient.getQueryData<DoctorAppointment[]>(['doctor-appointments']);
+      queryClient.setQueryData<DoctorAppointment[]>(['doctor-appointments'], old =>
+        old?.map(a => a.id === id ? { ...a, status: 'CANCELLED' as const } : a) ?? []
+      );
+      return { prev };
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['doctor-appointments'] });
       queryClient.invalidateQueries({ queryKey: ['doctor-dashboard'] });
       setDeclineTarget(null);
       toast({ title: 'Appointment Declined', description: 'The patient has been notified.' });
     },
-    onError: () => toast({ title: 'Failed', description: 'Could not decline appointment.', variant: 'destructive' }),
+    onError: (_err, _vars, context) => {
+      if (context?.prev) queryClient.setQueryData(['doctor-appointments'], context.prev);
+      toast({ title: 'Failed', description: 'Could not decline appointment.', variant: 'destructive' });
+    },
   });
 
   const cancelMutation = useMutation({
     mutationFn: (id: string) => appointmentService.cancelAppointment(id),
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ['doctor-appointments'] });
+      const prev = queryClient.getQueryData<DoctorAppointment[]>(['doctor-appointments']);
+      queryClient.setQueryData<DoctorAppointment[]>(['doctor-appointments'], old =>
+        old?.map(a => a.id === id ? { ...a, status: 'CANCELLED' as const } : a) ?? []
+      );
+      return { prev };
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['doctor-appointments'] });
       toast({ title: 'Appointment Cancelled' });
     },
-    onError: () => toast({ title: 'Failed', description: 'Could not cancel appointment.', variant: 'destructive' }),
+    onError: (_err, _id, context) => {
+      if (context?.prev) queryClient.setQueryData(['doctor-appointments'], context.prev);
+      toast({ title: 'Failed', description: 'Could not cancel appointment.', variant: 'destructive' });
+    },
   });
 
   // Sort: PENDING first, then by date

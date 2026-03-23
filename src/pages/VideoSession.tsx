@@ -138,12 +138,25 @@ export default function VideoSession() {
     }
   }, [messages.length, chatOpen]);
 
-  // Fetch session details
+  // Fetch session details with retry for patients who may get 403 initially
   useEffect(() => {
     if (!sessionId) return;
-    sessionService.getSession(sessionId)
-      .then(setSessionDetails)
-      .catch((e) => console.log('Could not fetch session details:', e));
+    let cancelled = false;
+    let attempt = 0;
+    const maxRetries = 5;
+    const fetchDetails = () => {
+      sessionService.getSession(sessionId)
+        .then(details => { if (!cancelled) setSessionDetails(details); })
+        .catch((e) => {
+          console.log(`Session fetch attempt ${attempt + 1} failed:`, e?.response?.status || e.message);
+          if (!cancelled && e?.response?.status === 403 && attempt < maxRetries) {
+            attempt++;
+            setTimeout(fetchDetails, 2000 * attempt);
+          }
+        });
+    };
+    fetchDetails();
+    return () => { cancelled = true; };
   }, [sessionId]);
 
   useEffect(() => {

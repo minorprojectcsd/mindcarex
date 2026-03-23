@@ -35,6 +35,7 @@ export default function VideoSession() {
   const localStreamRef = useRef<MediaStream | null>(null);
   const stompClientRef = useRef<Client | null>(null);
   const pendingCandidatesRef = useRef<RTCIceCandidateInit[]>([]);
+  const joinRetryRef = useRef<number>(0); // incremented to cancel stale retry loops
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   // Voice analysis refs

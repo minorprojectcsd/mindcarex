@@ -4,8 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import {
   LayoutDashboard, Calendar, Video, Users, Settings, LogOut, Shield,
-  Sun, Moon, Menu, MessageSquareText, ScanFace, AudioLines, FileText,
-  Bell, UserCircle, History,
+  Sun, Moon, Menu, MessageSquareText, Bell, UserCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useTheme } from 'next-themes';
@@ -24,10 +23,7 @@ const patientNavItems = [
 const doctorNavItems = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/doctor/dashboard' },
   { icon: Users, label: 'Appointments', href: '/doctor/appointments' },
-  { icon: AudioLines, label: 'Voice Analysis', href: '/analysis/voice' },
   { icon: MessageSquareText, label: 'Chat Analysis', href: '/analysis/chat' },
-  { icon: ScanFace, label: 'Emotion Analysis', href: '/analysis/emotion' },
-  { icon: FileText, label: 'Session Summary', href: '/analysis/summary' },
   { icon: Bell, label: 'Notifications', href: '/notifications' },
   { icon: UserCircle, label: 'My Profile', href: '/profile' },
   { icon: Settings, label: 'Settings', href: '/settings' },

@@ -39,7 +39,7 @@ export default function BookAppointment() {
     mutationFn: appointmentService.createAppointment,
     onSuccess: () => {
       toast({
-        title: '✅ Appointment Booked',
+        title: 'Appointment Booked',
         description: 'Your appointment has been scheduled.',
       });
       navigate('/patient/appointments');

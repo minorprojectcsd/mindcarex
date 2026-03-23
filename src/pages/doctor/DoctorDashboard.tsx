@@ -66,7 +66,7 @@ export default function DoctorDashboard() {
             {pendingCount > 0 && (
               <Button variant="outline" onClick={() => navigate('/doctor/appointments')} className="w-full sm:w-auto">
                 <Bell className="mr-2 h-4 w-4 text-orange-500" />
-                🔔 {pendingCount} Pending
+                {pendingCount} Pending
               </Button>
             )}
             <Button onClick={() => navigate('/doctor/appointments')} className="w-full sm:w-auto">

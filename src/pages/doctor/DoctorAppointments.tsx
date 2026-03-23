@@ -90,11 +90,22 @@ export default function DoctorAppointments() {
 
   const cancelMutation = useMutation({
     mutationFn: (id: string) => appointmentService.cancelAppointment(id),
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: ['doctor-appointments'] });
+      const prev = queryClient.getQueryData<DoctorAppointment[]>(['doctor-appointments']);
+      queryClient.setQueryData<DoctorAppointment[]>(['doctor-appointments'], old =>
+        old?.map(a => a.id === id ? { ...a, status: 'CANCELLED' as const } : a) ?? []
+      );
+      return { prev };
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['doctor-appointments'] });
       toast({ title: 'Appointment Cancelled' });
     },
-    onError: () => toast({ title: 'Failed', description: 'Could not cancel appointment.', variant: 'destructive' }),
+    onError: (_err, _id, context) => {
+      if (context?.prev) queryClient.setQueryData(['doctor-appointments'], context.prev);
+      toast({ title: 'Failed', description: 'Could not cancel appointment.', variant: 'destructive' });
+    },
   });
 
   // Sort: PENDING first, then by date

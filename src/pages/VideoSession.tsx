@@ -139,9 +139,14 @@ export default function VideoSession() {
     }
   }, [messages.length, chatOpen]);
 
-  // Fetch session details with retry for patients who may get 403 initially
+  // Fetch session details — only doctors need this (for analysis).
+  // Patients get 403 from backend, so skip to avoid logout loop.
   useEffect(() => {
     if (!sessionId) return;
+    if (!isDoctor) {
+      console.log('[Session] Skipping session details fetch for non-doctor role');
+      return;
+    }
     let cancelled = false;
     let attempt = 0;
     const maxRetries = 5;
@@ -150,7 +155,7 @@ export default function VideoSession() {
         .then(details => { if (!cancelled) setSessionDetails(details); })
         .catch((e) => {
           console.log(`Session fetch attempt ${attempt + 1} failed:`, e?.response?.status || e.message);
-          if (!cancelled && e?.response?.status === 403 && attempt < maxRetries) {
+          if (!cancelled && attempt < maxRetries) {
             attempt++;
             setTimeout(fetchDetails, 2000 * attempt);
           }
@@ -158,8 +163,7 @@ export default function VideoSession() {
     };
     fetchDetails();
     return () => { cancelled = true; };
-  }, [sessionId]);
-
+  }, [sessionId, isDoctor]);
   useEffect(() => {
     if (!sessionId) return;
     initConnection();

@@ -95,6 +95,8 @@ export default function Landing() {
         <Login />
       </div>
 
+      <Footer />
+
       <style>{`
         .logo-3d-container {
           perspective: 1000px;

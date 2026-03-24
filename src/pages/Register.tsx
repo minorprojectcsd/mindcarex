@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, User, ArrowRight, ArrowLeft, Stethoscope, Heart, Check } from 'lucide-react';
+import { Mail, Lock, User, ArrowRight, ArrowLeft, Stethoscope, Check } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -226,7 +226,7 @@ export default function Register() {
                   <label className="text-sm font-medium">I am a</label>
                   <div className="grid grid-cols-2 gap-3">
                     <Button type="button" variant={role === 'PATIENT' ? 'default' : 'outline'} onClick={() => setRole('PATIENT')} className="w-full gap-2">
-                      <Heart className="h-4 w-4" /> Patient
+                      <User className="h-4 w-4" /> Patient
                     </Button>
                     <Button type="button" variant={role === 'DOCTOR' ? 'default' : 'outline'} onClick={() => setRole('DOCTOR')} className="w-full gap-2">
                       <Stethoscope className="h-4 w-4" /> Doctor

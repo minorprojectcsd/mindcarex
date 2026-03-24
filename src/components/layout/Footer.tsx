@@ -1,4 +1,4 @@
-import { Mail, Shield, Heart } from 'lucide-react';
+import { Mail, Shield } from 'lucide-react';
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -62,9 +62,7 @@ export default function Footer() {
         {/* Bottom bar */}
         <div className="mt-10 flex flex-col items-center gap-2 border-t border-border pt-6 text-xs text-muted-foreground sm:flex-row sm:justify-between">
           <p>&copy; {currentYear} mindcareX. All rights reserved.</p>
-          <p className="flex items-center gap-1">
-            Built with <Heart className="h-3 w-3 text-primary" /> for mental wellness
-          </p>
+          <p>Built for mental wellness</p>
         </div>
       </div>
     </footer>

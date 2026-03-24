@@ -2,6 +2,7 @@ import { useRef, useEffect, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import Login from './Login';
 import { DottedSurface } from '@/components/ui/dotted-surface';
+import Footer from '@/components/layout/Footer';
 import mindcareBrain from '@/assets/mindcare-brain.png';
 
 export default function Landing() {

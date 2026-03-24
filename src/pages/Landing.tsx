@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import Login from './Login';
-import { DottedGlowBackground } from '@/components/ui/dotted-glow-background';
+import { DottedSurface } from '@/components/ui/dotted-surface';
 import mindcareBrain from '@/assets/mindcare-brain.png';
 
 export default function Landing() {
@@ -32,16 +32,7 @@ export default function Landing() {
         ref={heroRef}
         className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-background"
       >
-        <DottedGlowBackground
-          gap={16}
-          radius={1.5}
-          color="rgba(45, 137, 124, 0.4)"
-          glowColor="rgba(45, 137, 124, 0.9)"
-          darkColor="rgba(45, 137, 124, 0.6)"
-          darkGlowColor="rgba(45, 137, 124, 1)"
-          opacity={0.8}
-          speedScale={0.6}
-        />
+        <DottedSurface />
 
         {/* Hero content with parallax */}
         <div

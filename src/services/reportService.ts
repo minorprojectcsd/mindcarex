@@ -1,4 +1,4 @@
-const BASE = import.meta.env.VITE_REPORT_API_URL || 'https://mindcarex-report-api.onrender.com';
+const BASE = import.meta.env.VITE_REPORT_API_URL || 'https://mindcarex-report-api-omli.onrender.com';
 
 export interface ReportJson {
   session_overview?: string;

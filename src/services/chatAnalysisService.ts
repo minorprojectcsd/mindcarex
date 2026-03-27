@@ -1,6 +1,6 @@
 import type { ChatAnalysisResult } from '@/types/chatAnalysis';
 
-const BASE = import.meta.env.VITE_API_CHAT_URL || 'https://mindcarex-chat-api.onrender.com';
+const BASE = import.meta.env.VITE_API_CHAT_URL || 'https://mindcarex-chat-api-08st.onrender.com';
 
 async function unwrap<T>(res: Response): Promise<T> {
   const body = await res.json();

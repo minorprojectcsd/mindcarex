@@ -1,4 +1,4 @@
-const BASE = import.meta.env.VITE_VOICE_API_URL || 'https://mindcarex-audio-api.onrender.com';
+const BASE = import.meta.env.VITE_VOICE_API_URL || 'https://mindcarex-audio-api-z134.onrender.com';
 
 async function unwrap<T>(res: Response): Promise<T> {
   const body = await res.json();

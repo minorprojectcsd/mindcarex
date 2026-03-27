@@ -1,4 +1,4 @@
-const BASE = import.meta.env.VITE_CAMERA_API_URL || 'https://mindcarex-camera-api.onrender.com';
+const BASE = import.meta.env.VITE_CAMERA_API_URL || 'https://mindcarex-camera-api-5ccv.onrender.com';
 
 async function unwrap<T>(res: Response): Promise<T> {
   const body = await res.json();

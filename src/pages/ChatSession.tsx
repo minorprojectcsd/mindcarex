@@ -7,7 +7,7 @@ import { Send, PhoneOff, User, MessageSquare } from 'lucide-react';
 import { sessionService, SessionDetails, getParticipantName } from '@/services/sessionService';
 import { SessionSummaryModal, SessionSummaryData } from '@/components/session/SessionSummaryModal';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://mindcarex-backend.onrender.com';
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'https://mindcarex-backend-amq9.onrender.com';
 const WS_URL = API_BASE.replace(/^http/, 'ws') + '/ws';
 
 export default function ChatSession() {

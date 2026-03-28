@@ -3,7 +3,7 @@ import { ChevronDown } from 'lucide-react';
 import Login from './Login';
 import { DottedSurface } from '@/components/ui/dotted-surface';
 import Footer from '@/components/layout/Footer';
-import mindcareBrain from '@/assets/mindcare-brain.png';
+import SplineBrainScene from '@/components/SplineBrainScene';
 
 export default function Landing() {
   const loginRef = useRef<HTMLDivElement>(null);
@@ -45,16 +45,13 @@ export default function Landing() {
           }}
         >
           {/* 3D Logo Container */}
+          {/* 3D Spline Brain */}
           <div
-            className={`logo-3d-container mb-6 transition-all duration-1000 ${
+            className={`mb-6 w-[300px] h-[300px] transition-all duration-1000 ${
               isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
             }`}
           >
-            <img
-              src={mindcareBrain}
-              alt="mindcareX Logo"
-              className="logo-3d h-40 w-auto drop-shadow-2xl"
-            />
+            <SplineBrainScene />
           </div>
 
           {/* Company Name */}

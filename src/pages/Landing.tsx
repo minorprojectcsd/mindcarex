@@ -32,7 +32,8 @@ export default function Landing() {
         ref={heroRef}
         className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-background"
       >
-        <DottedSurface />
+        {/* Background gradient */}
+        <div className="absolute inset-0 bg-gradient-to-b from-background via-background to-muted/30" />
 
         {/* Hero content with parallax */}
         <div

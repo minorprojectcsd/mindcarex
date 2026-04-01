@@ -1,7 +1,6 @@
 import { useRef, useEffect, useState, Suspense, lazy } from 'react';
 import { ChevronDown } from 'lucide-react';
 import Login from './Login';
-import { DottedSurface } from '@/components/ui/dotted-surface';
 import Footer from '@/components/layout/Footer';
 
 const SplineBrainScene = lazy(() => import('@/components/SplineBrainScene'));

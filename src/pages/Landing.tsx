@@ -1,9 +1,10 @@
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, Suspense, lazy } from 'react';
 import { ChevronDown } from 'lucide-react';
 import Login from './Login';
 import { DottedSurface } from '@/components/ui/dotted-surface';
 import Footer from '@/components/layout/Footer';
-import mindcareBrain from '@/assets/mindcare-brain.png';
+
+const SplineBrainScene = lazy(() => import('@/components/SplineBrainScene'));
 
 export default function Landing() {
   const loginRef = useRef<HTMLDivElement>(null);
@@ -23,7 +24,6 @@ export default function Landing() {
   };
 
   const parallaxOffset = scrollY * 0.4;
-  const logoScale = Math.max(0.6, 1 - scrollY * 0.001);
   const heroOpacity = Math.max(0, 1 - scrollY * 0.002);
 
   return (
@@ -37,29 +37,33 @@ export default function Landing() {
 
         {/* Hero content with parallax */}
         <div
-          className="relative z-10 flex flex-col items-center"
+          className="relative z-10 flex flex-col items-center w-full px-4"
           style={{
-            transform: `translateY(-${parallaxOffset}px) scale(${logoScale})`,
+            transform: `translateY(-${parallaxOffset}px)`,
             opacity: heroOpacity,
             willChange: 'transform, opacity',
           }}
         >
-          {/* 3D Logo Container */}
+          {/* Spline 3D Scene */}
           <div
-            className={`logo-3d-container mb-6 transition-all duration-1000 ${
-              isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'
+            className={`w-full max-w-[280px] h-[220px] sm:max-w-[360px] sm:h-[280px] md:max-w-[480px] md:h-[380px] lg:max-w-[560px] lg:h-[440px] mb-2 transition-all duration-1000 ${
+              isVisible ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-10 scale-90'
             }`}
           >
-            <img
-              src={mindcareBrain}
-              alt="mindcareX Logo"
-              className="logo-3d h-40 w-auto drop-shadow-2xl"
-            />
+            <Suspense
+              fallback={
+                <div className="w-full h-full flex items-center justify-center">
+                  <div className="h-16 w-16 rounded-full border-4 border-primary/30 border-t-primary animate-spin" />
+                </div>
+              }
+            >
+              <SplineBrainScene />
+            </Suspense>
           </div>
 
           {/* Company Name */}
           <h1
-            className={`font-orbitron text-5xl font-bold tracking-tight md:text-7xl transition-all duration-1000 delay-200 ${
+            className={`font-orbitron text-4xl font-bold tracking-tight sm:text-5xl md:text-7xl transition-all duration-1000 delay-200 ${
               isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
             }`}
           >
@@ -70,7 +74,7 @@ export default function Landing() {
 
           {/* Tagline */}
           <p
-            className={`mt-4 font-jakarta text-xl text-muted-foreground md:text-2xl transition-all duration-1000 delay-500 ${
+            className={`mt-3 font-jakarta text-lg text-muted-foreground sm:text-xl md:text-2xl transition-all duration-1000 delay-500 ${
               isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'
             }`}
           >
@@ -78,15 +82,15 @@ export default function Landing() {
           </p>
         </div>
 
-        {/* Blinking Scroll Indicator */}
+        {/* Scroll Indicator */}
         <button
           onClick={scrollToLogin}
-          className={`absolute bottom-12 z-10 flex flex-col items-center gap-2 text-muted-foreground transition-all hover:text-primary duration-1000 delay-700 ${
+          className={`absolute bottom-8 sm:bottom-12 z-10 flex flex-col items-center gap-2 text-muted-foreground transition-all hover:text-primary duration-1000 delay-700 ${
             isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
           }`}
         >
-          <span className="text-sm font-medium animate-pulse">Scroll to continue</span>
-          <ChevronDown className="h-6 w-6 animate-bounce" />
+          <span className="text-xs sm:text-sm font-medium animate-pulse">Scroll to continue</span>
+          <ChevronDown className="h-5 w-5 sm:h-6 sm:w-6 animate-bounce" />
         </button>
       </section>
 
@@ -96,40 +100,6 @@ export default function Landing() {
       </div>
 
       <Footer />
-
-      <style>{`
-        .logo-3d-container {
-          perspective: 1000px;
-        }
-
-        .logo-3d {
-          transform-style: preserve-3d;
-          animation: float3d 6s ease-in-out infinite;
-          filter: drop-shadow(0 20px 40px rgba(45, 137, 124, 0.3))
-                  drop-shadow(0 10px 20px rgba(0, 0, 0, 0.2));
-        }
-
-        @keyframes float3d {
-          0%, 100% {
-            transform: translateY(0) rotateX(0deg) rotateY(0deg);
-          }
-          25% {
-            transform: translateY(-10px) rotateX(5deg) rotateY(-5deg);
-          }
-          50% {
-            transform: translateY(-15px) rotateX(0deg) rotateY(5deg);
-          }
-          75% {
-            transform: translateY(-8px) rotateX(-5deg) rotateY(0deg);
-          }
-        }
-
-        .logo-3d:hover {
-          animation-play-state: paused;
-          transform: translateY(-20px) rotateX(10deg) rotateY(10deg) scale(1.1);
-          transition: transform 0.3s ease-out;
-        }
-      `}</style>
     </div>
   );
 }

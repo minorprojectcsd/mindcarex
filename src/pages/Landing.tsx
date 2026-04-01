@@ -27,40 +27,33 @@ export default function Landing() {
 
   return (
     <div className="scroll-smooth">
-      {/* Welcome Section - Full Screen */}
+      {/* Welcome Section - Full Screen with Spline as background */}
       <section
         ref={heroRef}
-        className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-background"
+        className="relative h-screen w-full overflow-hidden bg-background"
       >
-        {/* Background gradient */}
-        <div className="absolute inset-0 bg-gradient-to-b from-background via-background to-muted/30" />
+        {/* Full-screen Spline 3D Scene as background */}
+        <div className="absolute inset-0 w-full h-full">
+          <Suspense
+            fallback={
+              <div className="w-full h-full flex items-center justify-center bg-background">
+                <div className="h-16 w-16 rounded-full border-4 border-primary/30 border-t-primary animate-spin" />
+              </div>
+            }
+          >
+            <SplineBrainScene />
+          </Suspense>
+        </div>
 
-        {/* Hero content with parallax */}
+        {/* Text overlay at bottom */}
         <div
-          className="relative z-10 flex flex-col items-center w-full px-4"
+          className="absolute inset-0 z-10 flex flex-col items-center justify-end pb-28 sm:pb-32 px-4"
           style={{
             transform: `translateY(-${parallaxOffset}px)`,
             opacity: heroOpacity,
             willChange: 'transform, opacity',
           }}
         >
-          {/* Spline 3D Scene */}
-          <div
-            className={`w-full max-w-[280px] h-[220px] sm:max-w-[360px] sm:h-[280px] md:max-w-[480px] md:h-[380px] lg:max-w-[560px] lg:h-[440px] mb-2 transition-all duration-1000 ${
-              isVisible ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-10 scale-90'
-            }`}
-          >
-            <Suspense
-              fallback={
-                <div className="w-full h-full flex items-center justify-center">
-                  <div className="h-16 w-16 rounded-full border-4 border-primary/30 border-t-primary animate-spin" />
-                </div>
-              }
-            >
-              <SplineBrainScene />
-            </Suspense>
-          </div>
-
           {/* Company Name */}
           <h1
             className={`font-orbitron text-4xl font-bold tracking-tight sm:text-5xl md:text-7xl transition-all duration-1000 delay-200 ${
@@ -85,7 +78,7 @@ export default function Landing() {
         {/* Scroll Indicator */}
         <button
           onClick={scrollToLogin}
-          className={`absolute bottom-8 sm:bottom-12 z-10 flex flex-col items-center gap-2 text-muted-foreground transition-all hover:text-primary duration-1000 delay-700 ${
+          className={`absolute bottom-6 sm:bottom-10 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2 text-muted-foreground transition-all hover:text-primary duration-1000 delay-700 ${
             isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
           }`}
         >

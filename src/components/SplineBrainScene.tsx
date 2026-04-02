@@ -1,38 +1,50 @@
 import Spline from '@splinetool/react-spline';
 import { useState, useCallback, useEffect, useRef } from 'react';
+import type { Application } from '@splinetool/runtime';
+
+const getSplineZoom = (viewportWidth: number) => {
+  if (viewportWidth < 400) return 0.56;
+  if (viewportWidth < 640) return 0.64;
+  if (viewportWidth < 768) return 0.76;
+  return 1;
+};
 
 export default function SplineBrainScene() {
   const [isLoaded, setIsLoaded] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const splineRef = useRef<Application | null>(null);
 
-  const onLoad = useCallback((splineApp: any) => {
-    setIsLoaded(true);
-    try {
-      // Try to zoom out the camera on mobile
-      const allObjects = splineApp.getAllObjects?.();
-      if (allObjects) {
-        const camera = allObjects.find((o: any) => o.type === 'PerspectiveCamera');
-        if (camera && window.innerWidth < 768) {
-          camera.position.z = camera.position.z * 1.6;
-        }
-      }
-    } catch (e) {
-      // Camera manipulation not supported, fall back to CSS scale
+  const applySceneViewport = useCallback((splineApp: Application) => {
+    splineApp.setZoom(getSplineZoom(window.innerWidth));
+
+    const heroBackground = getComputedStyle(document.documentElement)
+      .getPropertyValue('--hero-background')
+      .trim();
+
+    if (heroBackground) {
+      splineApp.setBackgroundColor(`hsl(${heroBackground})`);
     }
   }, []);
 
-  // CSS fallback: scale canvas down on mobile so the 3D object looks smaller
+  const onLoad = useCallback((splineApp: Application) => {
+    splineRef.current = splineApp;
+    applySceneViewport(splineApp);
+    setIsLoaded(true);
+  }, [applySceneViewport]);
+
   useEffect(() => {
-    if (!containerRef.current) return;
-    const canvas = containerRef.current.querySelector('canvas');
-    if (canvas && window.innerWidth < 768) {
-      canvas.style.transform = 'scale(0.65)';
-      canvas.style.transformOrigin = 'center center';
-    }
-  }, [isLoaded]);
+    const handleResize = () => {
+      if (splineRef.current) {
+        applySceneViewport(splineRef.current);
+      }
+    };
+
+    window.addEventListener('resize', handleResize, { passive: true });
+
+    return () => window.removeEventListener('resize', handleResize);
+  }, [applySceneViewport]);
 
   return (
-    <div ref={containerRef} className="relative h-full w-full overflow-hidden bg-hero touch-pan-y">
+    <div className="relative h-full w-full overflow-hidden bg-hero touch-pan-y">
       {/* Loading indicator until Spline loads */}
       {!isLoaded && (
         <div className="absolute inset-0 flex items-center justify-center bg-hero">

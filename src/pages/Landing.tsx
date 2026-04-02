@@ -29,20 +29,15 @@ export default function Landing() {
       <section className="relative h-[100svh] min-h-[100svh] w-full overflow-hidden bg-hero">
         {/* Full-screen Spline 3D Scene */}
         <div className="absolute inset-0 overflow-hidden bg-hero">
-          <div className="absolute inset-0 flex items-center justify-center touch-pan-y">
-            <div className="h-[120%] w-[120%] origin-center transform-gpu scale-[0.62] transition-transform duration-500 max-[480px]:scale-[0.52] sm:h-[112%] sm:w-[112%] sm:scale-[0.74] md:h-full md:w-full md:scale-100">
-              <Suspense
-                fallback={
-                  <div className="flex h-full w-full items-center justify-center bg-hero">
-                    <div className="h-16 w-16 rounded-full border-4 border-primary/30 border-t-primary animate-spin" />
-                  </div>
-                }
-              >
-                <SplineBrainScene />
-              </Suspense>
-            </div>
-          </div>
-          <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-hero to-transparent" />
+          <Suspense
+            fallback={
+              <div className="flex h-full w-full items-center justify-center bg-hero">
+                <div className="h-16 w-16 rounded-full border-4 border-primary/30 border-t-primary animate-spin" />
+              </div>
+            }
+          >
+            <SplineBrainScene />
+          </Suspense>
         </div>
 
         {/* Text overlay — pointer-events-none so Spline stays interactive */}

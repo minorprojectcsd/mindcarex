@@ -1,4 +1,10 @@
-const BASE = import.meta.env.VITE_REPORT_API_URL || 'https://mindcarex-report-api-omli.onrender.com';
+import { createDualFetch } from '@/lib/apiFetch';
+
+const dualFetch = createDualFetch(
+  import.meta.env.VITE_REPORT_API_URL || '',
+  'https://mindcarex-report-api.onrender.com',
+  'https://mindcarex-report-api-omli.onrender.com'
+);
 
 export interface ReportJson {
   session_overview?: string;
@@ -36,7 +42,7 @@ async function unwrapReport<T>(res: Response): Promise<T> {
 
 export const reportService = {
   async generate(sessionId: string): Promise<GeneratedReport> {
-    const res = await fetch(`${BASE}/api/report/generate`, {
+    const res = await dualFetch('/api/report/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ session_id: sessionId }),
@@ -49,12 +55,12 @@ export const reportService = {
   },
 
   async getReport(sessionId: string): Promise<GeneratedReport> {
-    const res = await fetch(`${BASE}/api/report/${sessionId}`);
+    const res = await dualFetch(`/api/report/${sessionId}`);
     return unwrapReport<GeneratedReport>(res);
   },
 
   async getPatientHistory(patientId: string): Promise<ReportHistoryEntry[]> {
-    const res = await fetch(`${BASE}/api/report/patient/${patientId}/history`);
+    const res = await dualFetch(`/api/report/patient/${patientId}/history`);
     return unwrapReport<ReportHistoryEntry[]>(res);
   },
 };

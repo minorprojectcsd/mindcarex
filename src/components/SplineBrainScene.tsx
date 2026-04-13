@@ -21,7 +21,11 @@ export default function SplineBrainScene() {
       .trim();
 
     if (heroBackground) {
-      splineApp.setBackgroundColor(`hsl(${heroBackground})`);
+      // Convert CSS HSL "0 0% 4%" to "hsl(0, 0%, 4%)" format THREE.js expects
+      const parts = heroBackground.split(/\s+/);
+      if (parts.length === 3) {
+        splineApp.setBackgroundColor(`hsl(${parts[0]}, ${parts[1]}, ${parts[2]})`);
+      }
     }
   }, []);
 

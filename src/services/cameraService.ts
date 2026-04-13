@@ -1,4 +1,10 @@
-const BASE = import.meta.env.VITE_CAMERA_API_URL || 'https://mindcarex-camera-api-5ccv.onrender.com';
+import { failoverFetch } from '@/lib/apiFetch';
+
+const RAW = import.meta.env.VITE_CAMERA_API_URL || 'https://mindcarex-camera-api.onrender.com,https://mindcarex-camera-api-5ccv.onrender.com';
+const [PRIMARY, BACKUP] = RAW.split(',').map((u: string) => u.trim());
+
+const dualFetch = (path: string, init?: RequestInit) =>
+  failoverFetch(PRIMARY, BACKUP || PRIMARY, path, init);
 
 async function unwrap<T>(res: Response): Promise<T> {
   const body = await res.json();
@@ -20,7 +26,7 @@ export interface CameraSession {
 
 export const cameraService = {
   async startSession(sessionId: string): Promise<CameraSession> {
-    const res = await fetch(`${BASE}/api/camera/session/start`, {
+    const res = await dualFetch('/api/camera/session/start', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ session_id: sessionId }),
@@ -31,7 +37,7 @@ export const cameraService = {
   async uploadFrame(cameraSessionId: string, imageBlob: Blob): Promise<CameraFrameResult> {
     const form = new FormData();
     form.append('file', imageBlob, 'frame.jpg');
-    const res = await fetch(`${BASE}/api/camera/${cameraSessionId}/frame`, {
+    const res = await dualFetch(`/api/camera/${cameraSessionId}/frame`, {
       method: 'POST',
       body: form,
     });
@@ -43,7 +49,7 @@ export const cameraService = {
   },
 
   getLiveWebSocketUrl(cameraSessionId: string): string {
-    const wsBase = BASE.replace('https://', 'wss://').replace('http://', 'ws://');
+    const wsBase = PRIMARY.replace('https://', 'wss://').replace('http://', 'ws://');
     return `${wsBase}/api/camera/${cameraSessionId}/live`;
   },
 };

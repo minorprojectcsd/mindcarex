@@ -1,4 +1,10 @@
-const BASE = import.meta.env.VITE_VOICE_API_URL || 'https://mindcarex-audio-api-z134.onrender.com';
+import { createDualFetch, failoverFetch } from '@/lib/apiFetch';
+
+const RAW = import.meta.env.VITE_VOICE_API_URL || 'https://mindcarex-audio-api.onrender.com,https://mindcarex-audio-api-z134.onrender.com';
+const [PRIMARY, BACKUP] = RAW.split(',').map((u: string) => u.trim());
+
+const dualFetch = (path: string, init?: RequestInit) =>
+  failoverFetch(PRIMARY, BACKUP || PRIMARY, path, init);
 
 async function unwrap<T>(res: Response): Promise<T> {
   const body = await res.json();
@@ -17,7 +23,7 @@ export interface VoiceChunkResult {
   risk_level?: string;
   top_emotions: { label: string; score: number }[];
   chunk_transcript?: string;
-  transcript?: string; // legacy alias
+  transcript?: string;
   mode?: string;
   total_chunks?: number;
   acoustic_features?: {
@@ -90,19 +96,16 @@ export interface VoiceHistoryEntry {
   label?: string;
 }
 
-/** Unwrap timeline specifically since it's nested under data.timeline */
 async function unwrapTimeline(res: Response): Promise<VoiceTimelinePoint[]> {
   const body = await res.json();
   if (body.success === false) {
     throw new Error(body.error || body.detail || 'Request failed');
   }
   const data = body.data ?? body;
-  // API returns { data: { timeline: [...] } }
   const arr = data.timeline ?? data;
   return Array.isArray(arr) ? arr : [];
 }
 
-/** Unwrap transcript — full_transcript lives at data level */
 async function unwrapTranscript(res: Response): Promise<VoiceTranscript> {
   const body = await res.json();
   if (body.success === false) {
@@ -117,7 +120,7 @@ async function unwrapTranscript(res: Response): Promise<VoiceTranscript> {
 
 export const voiceAnalysisService = {
   async startSession(patientId: string, label?: string): Promise<{ session_id: string }> {
-    const res = await fetch(`${BASE}/api/voice/session/start`, {
+    const res = await dualFetch('/api/voice/session/start', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ patient_id: patientId, label: label || 'Consultation' }),
@@ -126,12 +129,11 @@ export const voiceAnalysisService = {
   },
 
   async stopSession(sessionId?: string): Promise<VoiceSessionSummary> {
-    const res = await fetch(`${BASE}/api/voice/session/stop`, {
+    const res = await dualFetch('/api/voice/session/stop', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(sessionId ? { session_id: sessionId } : {}),
     });
-    // stop returns { data: { session_id, status, full_transcript, summary: {...} } }
     const body = await res.json();
     if (body.success === false) {
       throw new Error(body.error || body.detail || 'Request failed');
@@ -143,7 +145,7 @@ export const voiceAnalysisService = {
   async uploadChunk(sessionId: string, audioBlob: Blob): Promise<VoiceChunkResult> {
     const form = new FormData();
     form.append('file', audioBlob, 'chunk.webm');
-    const res = await fetch(`${BASE}/api/voice/${sessionId}/chunk`, {
+    const res = await dualFetch(`/api/voice/${sessionId}/chunk`, {
       method: 'POST',
       body: form,
     });
@@ -155,37 +157,38 @@ export const voiceAnalysisService = {
   },
 
   getLiveWebSocketUrl(sessionId: string): string {
-    const wsBase = BASE.replace('https://', 'wss://').replace('http://', 'ws://');
+    // Try primary first for WS
+    const wsBase = PRIMARY.replace('https://', 'wss://').replace('http://', 'ws://');
     return `${wsBase}/api/voice/${sessionId}/live`;
   },
 
   async getSession(sessionId: string): Promise<VoiceSession> {
-    const res = await fetch(`${BASE}/api/voice/${sessionId}`);
+    const res = await dualFetch(`/api/voice/${sessionId}`);
     return unwrap<VoiceSession>(res);
   },
 
   async getTimeline(sessionId: string): Promise<VoiceTimelinePoint[]> {
-    const res = await fetch(`${BASE}/api/voice/${sessionId}/timeline`);
+    const res = await dualFetch(`/api/voice/${sessionId}/timeline`);
     return unwrapTimeline(res);
   },
 
   async getSummary(sessionId: string): Promise<VoiceSessionSummary> {
-    const res = await fetch(`${BASE}/api/voice/${sessionId}/summary`);
+    const res = await dualFetch(`/api/voice/${sessionId}/summary`);
     return unwrap<VoiceSessionSummary>(res);
   },
 
   async getTranscript(sessionId: string): Promise<VoiceTranscript> {
-    const res = await fetch(`${BASE}/api/voice/${sessionId}/transcript`);
+    const res = await dualFetch(`/api/voice/${sessionId}/transcript`);
     return unwrapTranscript(res);
   },
 
   async getPatientHistory(patientId: string): Promise<VoiceHistoryEntry[]> {
-    const res = await fetch(`${BASE}/api/voice/patient/${patientId}/history`);
+    const res = await dualFetch(`/api/voice/patient/${patientId}/history`);
     return unwrap<VoiceHistoryEntry[]>(res);
   },
 
   async getStatus(): Promise<{ status: string; groq_stt: boolean; hf_emotion: boolean }> {
-    const res = await fetch(`${BASE}/api/voice/status`);
+    const res = await dualFetch('/api/voice/status');
     return unwrap(res);
   },
 };
